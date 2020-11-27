@@ -12,6 +12,19 @@ const renderStreamList = (streams) => {
 			streams[tabId].forEach(stream => {
 				const entry = document.createElement('li');
 				entry.innerText = `tab: ${tabId} stream: ${stream.id}`;
+
+				const deleteButton = document.createElement('button');
+				deleteButton.innerText = "delete";
+				deleteButton.addEventListener('click', () => {
+					browser.tabs.sendMessage(parseInt(tabId), {
+						command: 'stop-id',
+						id: tabId,
+						streamId: stream.id,
+					}).catch(e =>
+						console.log('failed to stop: ', tabId, stream.id, e)
+					);
+				});
+				entry.appendChild(deleteButton);
 				elementsList.appendChild(entry);
 			});
 		});
@@ -48,6 +61,7 @@ const clickHandler = (e) => {
 				allTabs.forEach(tab => {
 					browser.tabs.sendMessage(tab.id, {
 						command: 'stop-all',
+						id: tab.id.toString(),
 					}).catch(e => console.log('failed to send to:', tab.id, e));
 				});
 			});
