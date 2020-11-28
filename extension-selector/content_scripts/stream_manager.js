@@ -34,6 +34,14 @@
     console.log('injected CSS');
 
     return new Promise((resolve, reject) => {
+      const teardown = () => {
+        console.log('teardown');
+        window.removeEventListener('blur', teardown);
+        // eslint-disable-next-line no-use-before-define
+        window.removeEventListener('click', listener, { capture: true });
+        document.head.removeChild(styleElement);
+      };
+
       const listener = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -48,13 +56,6 @@
         } else {
           reject();
         }
-      };
-
-      const teardown = () => {
-        console.log('teardown');
-        window.removeEventListener('blur', teardown);
-        window.removeEventListener('click', listener, { capture: true });
-        document.head.removeChild(styleElement);
       };
 
       window.addEventListener('click', listener, { capture: true });
@@ -76,7 +77,6 @@
         browser.storage.local.set(updatedStreams);
       })
       .catch((e) => console.log('failed adding to stream', e));
-    console.log('test');
   };
 
   const deleteStream = async (tabId, streamId) => {
