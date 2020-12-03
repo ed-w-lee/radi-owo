@@ -9,3 +9,5 @@ parserOptions:
 rules:
   no-console: "off"
   no-use-before-define: [ 1, "nofunc" ]
+  import:
+    extensions: false

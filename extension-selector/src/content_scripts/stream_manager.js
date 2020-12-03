@@ -1,3 +1,5 @@
+import { initRTCPeerConnection } from '../common/rtcConnection.js';
+
 (() => {
   if (window.hasRun) {
     return;
@@ -5,16 +7,16 @@
   window.hasRun = true;
 
   let myId = null;
-  let someIndex = 0;
-
-  const getStreamsForTab = (tabId) => browser.storage.local.get(tabId);
+  let nextStreamId = 0;
+  const tabStreams = new Map();
 
   const findMediaElement = (el, parentDepth = 2) => {
     let myEl = el;
     for (let i = 0; i < parentDepth; i += 1) {
       myEl = myEl.parentNode;
     }
-    return el.querySelector('audio') || el.querySelector('video');
+    console.log(myEl);
+    return myEl.querySelector('audio') || myEl.querySelector('video');
   };
 
   // These aren't atomic, but whatever
@@ -25,7 +27,7 @@
   audio { 
     border: 5px solid red; 
   }`;
-  const chooseStream = (index) => {
+  const chooseStream = () => {
     console.log('choosing stream');
     const styleElement = document.createElement('style');
     styleElement.innerHTML = mediaElementCSS;
@@ -49,10 +51,7 @@
         const mediaElement = findMediaElement(e.target);
         console.log(mediaElement);
         if (mediaElement) {
-          resolve({
-            id: index,
-            element: mediaElement.outerHTML,
-          });
+          resolve(mediaElement);
         } else {
           reject();
         }
@@ -63,50 +62,53 @@
     });
   };
 
-  const addStream = async (tabId, index) => {
-    console.log('adding stream');
-    const stream = await chooseStream(index);
+  const addStream = async (streamId) => {
+    const element = await chooseStream();
 
-    console.log('adding to stream', tabId, stream);
-    getStreamsForTab(tabId)
-      .then((streams) => {
-        const updated = streams[tabId] || [];
-        updated.push(stream);
-        const updatedStreams = streams;
-        updatedStreams[tabId] = updated;
-        browser.storage.local.set(updatedStreams);
-      })
-      .catch((e) => console.log('failed adding to stream', e));
-  };
-
-  const deleteStream = async (tabId, streamId) => {
-    console.log('deleting stream', tabId, streamId);
-    const streams = await getStreamsForTab(tabId);
-    let updated = streams[tabId] || [];
-    updated = updated.filter((stream) => stream.id !== streamId);
-    if (updated.length === 0) {
-      browser.storage.local.remove(tabId);
+    console.log('adding stream', element.outerHTML);
+    let stream;
+    if (element.mozCaptureStream) {
+      stream = element.mozCaptureStream();
     } else {
-      streams[tabId] = updated;
-      browser.storage.local.set(streams);
+      stream = element.captureStream();
     }
+
+    console.log('attempting to connect to port');
+    const port = browser.runtime.connect({
+      name: `port-tab${myId}-stream${streamId}`,
+    });
+    console.log('connected to port', port);
+    const pc = initRTCPeerConnection(port, false);
+
+    console.log('stream audio tracks', stream.getAudioTracks());
+    stream.getAudioTracks().forEach((track) => {
+      pc.addTrack(track);
+    });
+    console.log('stream audio tracks after', stream.getAudioTracks());
+
+    tabStreams[streamId] = element;
   };
 
-  const deleteAll = (tabId) => {
-    console.log('deleting all', tabId);
-    browser.storage.local.remove(tabId);
+  const deleteStream = async (streamId) => {
+    console.log('deleting stream', streamId);
+    tabStreams.delete(streamId);
+  };
+
+  const deleteAll = () => {
+    console.log('deleting all');
+    tabStreams.clear();
   };
 
   const messageHandler = (message) => {
     console.log(message);
     if (message.command === 'chooser-start') {
       myId = message.id;
-      someIndex += 1;
-      addStream(myId, someIndex);
-    } else if (message.command === 'stop-all') {
-      deleteAll(myId || message.id);
+      nextStreamId += 1;
+      addStream(nextStreamId);
     } else if (message.command === 'stop-id') {
-      deleteStream(myId || message.id, message.streamId);
+      deleteStream(message.streamId);
+    } else if (message.command === 'stop-all') {
+      deleteAll();
     }
   };
 

@@ -91,13 +91,15 @@ const startup = () => {
 };
 
 let executed = false;
-(() => {
+(async () => {
   if (executed) return;
   executed = true;
 
   console.log('executing script');
 
-  browser.tabs.executeScript({ file: '/content_scripts/stream_manager.js' })
-    .then(startup)
-    .catch((e) => console.log('there was some error in executing', e));
+  browser.tabs.executeScript({
+    file: '/src/content_scripts/bundle.js'
+  })
+    .catch((e) => console.log('there was some error in executing', e))
+    .then(startup);
 })();

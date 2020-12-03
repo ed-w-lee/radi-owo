@@ -16,6 +16,9 @@
 			"48": "assets/icons/radiowo-48.png"
 		},
 		"default_title": "Radiowo select",
-		"default_popup": "popup/popup.html"
+		"default_popup": "src/popup/popup.html"
+	},
+	"background": {
+		"page": "src/background/background.html"
 	}
 }
