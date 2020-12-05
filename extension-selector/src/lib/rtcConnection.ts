@@ -1,11 +1,13 @@
+import { Runtime } from "webextension-polyfill-ts";
+
 const config = {
   iceServers: [],
 };
 
 const sanitize = (obj) => JSON.parse(JSON.stringify(obj));
 
-export function initRTCPeerConnection(portParam, polite) {
-  console.log("initializing rtc peer connection");
+export default function initRTCPeerConnection(portParam: Runtime.Port, polite: boolean) {
+  console.log('initializing rtc peer connection');
   const port = portParam;
   // negotiate WebRTC connection
   const pc = new RTCPeerConnection(config);
@@ -14,6 +16,7 @@ export function initRTCPeerConnection(portParam, polite) {
     try {
       makingOffer = true;
       console.log('setting local description for negotiation needed');
+      // @ts-expect-error: missing argument is OK
       await pc.setLocalDescription();
       console.log('local description', pc.localDescription);
       port.postMessage({
@@ -42,6 +45,7 @@ export function initRTCPeerConnection(portParam, polite) {
         console.log('remote description', description);
         await pc.setRemoteDescription(description);
         if (description.type === 'offer') {
+          // @ts-expect-error: missing argument is OK
           await pc.setLocalDescription();
           port.postMessage({
             description: sanitize(pc.localDescription),

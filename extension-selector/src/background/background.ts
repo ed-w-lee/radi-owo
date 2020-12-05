@@ -1,4 +1,7 @@
-import { initRTCPeerConnection } from '../common/rtcConnection.js';
+import 'webrtc-adapter';
+import { browser, Runtime } from 'webextension-polyfill-ts';
+
+import initRTCPeerConnection from '../lib/rtcConnection.js';
 
 /**
  * Listens for local streams and compresses all the streams received into a
@@ -7,35 +10,41 @@ import { initRTCPeerConnection } from '../common/rtcConnection.js';
  * https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Perfect_negotiation.
  */
 
-const createAudioElement = (myMediaStream) => {
+const createAudioElement = (myMediaStream: MediaStream) => {
   const audioElement = document.createElement('audio');
   audioElement.id = 'rolled-audio-track';
   audioElement.srcObject = myMediaStream;
   document.body.appendChild(audioElement);
+  audioElement.play();
 };
 
-const addConnection = async (port, myMediaStream) => {
+const addConnection = async (port: Runtime.Port, myMediaStream: MediaStream) => {
   const pc = initRTCPeerConnection(port, true);
   pc.ontrack = (trackEv) => {
-    console.log('ontrack event', trackEv);
+    console.log('[background] ontrack event', trackEv);
     const { track } = trackEv;
     track.onunmute = () => {
-      console.log('unmuted track');
+      console.log('[background] unmuted track');
       myMediaStream.addTrack(track);
     };
   };
+  pc.oniceconnectionstatechange = () => {
+    if (['failed', 'disconnected', 'closed'].includes(pc.iceConnectionState)) {
+      console.log('[background] track disconnected');
+    }
+  };
 };
 
-const startup = (myMediaStream) => {
+const startCompressor = (myMediaStream) => {
   createAudioElement(myMediaStream);
   browser.runtime.onConnect.addListener((port) => {
-    console.log('found connection attempt', port);
+    console.log('[background] found connection attempt', port);
     addConnection(port, myMediaStream)
-      .catch((e) => console.log('failed to add connection', e));
+      .catch((e) => console.log('[background] failed to add connection', e));
   });
 };
 
 (() => {
   const myMediaStream = new MediaStream();
-  startup(myMediaStream);
+  startCompressor(myMediaStream);
 })();
