@@ -6,4 +6,5 @@ export default function captureStream(element: HTMLMediaElement): MediaStream {
   } else {
     stream = element.captureStream();
   }
+  return stream;
 }

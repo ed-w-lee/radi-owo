@@ -1,14 +1,14 @@
-import 'webrtc-adapter';
-import { browser, Runtime } from 'webextension-polyfill-ts';
-
-import initRTCPeerConnection from '../lib/rtcConnection.js';
-
 /**
  * Listens for local streams and compresses all the streams received into a
  * single stream for export. This is the polite peer for all connections as
  * defined in
  * https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Perfect_negotiation.
  */
+
+import 'webrtc-adapter';
+import { browser, Runtime } from 'webextension-polyfill-ts';
+
+import initRTCPeerConnection from '../lib/rtcConnection.js';
 
 const createAudioElement = (myMediaStream: MediaStream) => {
   const audioElement = document.createElement('audio');

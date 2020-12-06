@@ -6,6 +6,9 @@
     "noUnusedLocals": true,
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+  ],
+  "exclude": [
+    "src/**/build_*.js",
   ],
 }

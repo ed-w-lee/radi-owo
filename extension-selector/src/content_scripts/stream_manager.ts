@@ -1,10 +1,18 @@
+/**
+ * Content script which runs on a specific tab. Manages everything related to
+ * the stream, from creating them when needed to reporting statuses to the
+ * popup.
+ */
+
 import 'webrtc-adapter';
 import { browser } from 'webextension-polyfill-ts';
 
 import initRTCPeerConnection from '../lib/rtcConnection.js';
 import captureStream from '../lib/polyfill.js';
+import generateId from '../lib/lib.js';
 
-type ConnectionAndStream = {
+type StreamInfo = {
+  element: HTMLMediaElement,
   pc: RTCPeerConnection,
   stream: MediaStream,
 };
@@ -20,7 +28,7 @@ declare global {
   window.RadiowoHasRun = true;
 
   let nextStreamId = 0;
-  const tabStreams: Map<number, ConnectionAndStream> = new Map();
+  const tabStreams: Map<number, StreamInfo> = new Map();
 
   const findMediaElement = (el: HTMLElement, parentDepth = 2): HTMLMediaElement | null => {
     let myEl = el;
@@ -74,28 +82,50 @@ declare global {
     });
   };
 
+  const getPlayStatus = (el: HTMLMediaElement): PlayStatus => {
+    return el.paused ? 'paused' : 'playing';
+  };
+
+  const sendStreamUpdate = (streamId: number, status: PlayStatus) => {
+    console.log('[content] send update', streamId, status);
+    browser.runtime.sendMessage(undefined, {
+      description: 'status-update',
+      streamId: streamId,
+      status: status,
+    } as StatusUpdateMessage)
+      .catch(e => console.error(e));
+  };
+
+  const sendStreams = () => {
+    const tabStatuses: [number, PlayStatus][] = Array.from(tabStreams.entries()).map(([k, v]) =>
+      [k, getPlayStatus(v.element)]
+    );
+    console.log('[content] sending statuses', tabStatuses);
+    browser.runtime.sendMessage(undefined, {
+      description: 'status-all',
+      statuses: tabStatuses,
+    } as AllStatusesMessage)
+      .catch(e => console.error(e));
+  };
+
   const addStream = async (streamId: number) => {
     const element = await chooseStream();
 
-    console.log('[content] adding stream', element.outerHTML);
     let stream = captureStream(element);
 
     console.log('[content] attempting to connect to port');
     const port = browser.runtime.connect(undefined, {
-      name: JSON.stringify({
-        streamId,
-      }),
+      name: `${streamId}-${generateId(10)}`,
     });
     console.log('[content] connected to port', port);
     const pc = initRTCPeerConnection(port, false);
-
-    console.log('[content] stream audio tracks', stream.getAudioTracks());
+    console.log('[content] attempting to retrieve audio tracks', port, stream.getAudioTracks());
     stream.getAudioTracks().forEach((track) => {
       pc.addTrack(track);
     });
-    console.log('[content] stream audio tracks after', stream.getAudioTracks());
-
-    tabStreams.set(streamId, { pc, stream });
+    console.log('[content] created pc and added tracks');
+    tabStreams.set(streamId, { element, pc, stream });
+    sendStreamUpdate(streamId, getPlayStatus(element));
   };
 
   const deleteStream = async (streamId: number) => {
@@ -109,11 +139,13 @@ declare global {
     pc.close();
     console.log(stream.getAudioTracks());
     tabStreams.delete(streamId);
+    sendStreams();
   };
 
   const deleteAll = () => {
     console.log('[content] deleting all');
     Array.from(tabStreams.keys()).forEach(deleteStream);
+    sendStreams();
   };
 
   const messageHandler = (message: ToContentMessage) => {
@@ -122,7 +154,7 @@ declare global {
       nextStreamId += 1;
       addStream(nextStreamId);
     } else if (message.command === 'get-all') {
-
+      sendStreams();
     } else if (message.command === 'stop-stream') {
       deleteStream(message.streamId);
     } else if (message.command === 'stop-all') {

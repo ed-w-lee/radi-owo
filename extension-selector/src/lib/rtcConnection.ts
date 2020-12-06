@@ -16,7 +16,7 @@ export default function initRTCPeerConnection(portParam: Runtime.Port, polite: b
     try {
       makingOffer = true;
       console.log('setting local description for negotiation needed');
-      // @ts-expect-error: missing argument is OK
+      // @ts-ignore: missing argument is OK
       await pc.setLocalDescription();
       console.log('local description', pc.localDescription);
       port.postMessage({
@@ -45,7 +45,7 @@ export default function initRTCPeerConnection(portParam: Runtime.Port, polite: b
         console.log('remote description', description);
         await pc.setRemoteDescription(description);
         if (description.type === 'offer') {
-          // @ts-expect-error: missing argument is OK
+          // @ts-ignore: missing argument is OK
           await pc.setLocalDescription();
           port.postMessage({
             description: sanitize(pc.localDescription),
@@ -63,6 +63,8 @@ export default function initRTCPeerConnection(portParam: Runtime.Port, polite: b
       console.error(err);
     }
   });
+
+  console.log('initialized')
 
   return pc;
 }

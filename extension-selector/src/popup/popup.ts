@@ -1,43 +1,51 @@
-import { browser } from 'webextension-polyfill-ts';
+import { browser, Runtime } from 'webextension-polyfill-ts';
 
-const renderStreamList = (currentTracks) => {
+type StreamsStore = Map<number, Map<number, PlayStatus>>;
+
+const renderStreamList = (allStreams: StreamsStore) => {
   const container = document.getElementById('elements-list-container')!;
   container.innerHTML = ''; // clear children of the list
 
-  const streams = currentTracks;
-  console.log(streams);
-  if (streams.length > 0) {
-    const elementsList = document.createElement('ul');
-    streams.forEach((stream) => {
-      const entry = document.createElement('li');
-      entry.innerText = `title: ${stream.key.sender.tab.title}`
-        + ` stream: ${stream.key.streamId}`
-        + ` state: ${stream.state}`;
+  let numRendered = 0;
 
-      const tabId = stream.key.sender.tab.id;
-      const { streamId } = stream.key;
-      const deleteButton = document.createElement('button');
-      deleteButton.innerText = 'delete';
-      deleteButton.addEventListener('click', () => {
-        browser.tabs.sendMessage(tabId, {
-          command: 'stop-id',
-          id: tabId.toString(),
-          streamId,
-        }).catch((e) => console.log('failed to stop: ', tabId, streamId, e));
-      });
-      entry.appendChild(deleteButton);
-      elementsList.appendChild(entry);
-    });
-    container.appendChild(elementsList);
-  } else {
+  const elementsList = document.createElement('ul');
+  // TODO - we need to render AFTER browser tab information has been retrieved
+  allStreams.forEach((tabStreams, tabId) => {
+    console.log(tabStreams);
+    browser.tabs.get(tabId)
+      .then((tabInfo) => {
+        console.log('[popup] got tab info');
+        tabStreams.forEach((status, streamId) => {
+          console.log('status and streamid', status, streamId);
+          console.log('num rendered', numRendered);
+          numRendered += 1;
+          console.log('num rendered after', numRendered);
+          const entry = document.createElement('li');
+          entry.innerText = `title: ${tabInfo.title}`
+            + ` stream: ${streamId}`
+            + ` status: ${status}`;
+
+          const deleteButton = document.createElement('button');
+          deleteButton.innerText = 'delete';
+          const deleteHandler = () => {
+            browser.tabs.sendMessage(tabId, {
+              command: 'stop-stream',
+              streamId,
+            } as StopStreamMessage)
+              .catch((e) => console.log('[popup] failed to stop: ', tabId, streamId, e));
+          }
+          deleteButton.addEventListener('click', deleteHandler);
+          entry.appendChild(deleteButton);
+          elementsList.appendChild(entry);
+        })
+      })
+      .catch(e => console.error(e));
+  });
+  container.appendChild(elementsList);
+
+  console.log('num rendered final', numRendered);
+  if (numRendered === 0) {
     container.innerText = 'No streams exist at this time.';
-  }
-};
-
-const backgroundMessageHandler = (message) => {
-  console.log('[popup] received message', message);
-  if (message.currentTracks) {
-    renderStreamList(message.currentTracks);
   }
 };
 
@@ -78,7 +86,7 @@ const clickHandler = (ev: MouseEvent) => {
           browser.tabs.sendMessage(tab.id, {
             command: 'stop-all',
           } as StopAllMessage)
-            .catch((e) => console.log('[popup] failed to send to:', tab.id, e));
+            .catch(e => { });
         });
       });
     }
@@ -91,28 +99,58 @@ const clickHandler = (ev: MouseEvent) => {
 };
 
 let isListening = false;
-const addListeners = () => {
+const addListeners = (allStreams: StreamsStore) => {
   if (isListening) {
     return;
   }
   isListening = true;
 
   document.addEventListener('click', clickHandler);
-  browser.runtime.onMessage.addListener(backgroundMessageHandler);
-  window.onclose = () => {
-    browser.runtime.onMessage.removeListener(backgroundMessageHandler);
+
+  const statusMessageHandler = (message: ToPopupMessage, sender: Runtime.MessageSender) => {
+    console.log('[popup] received message', message, sender);
+    if (!sender.tab || !sender.tab.id) return;
+
+    if (message.description === 'status-all') {
+      const tabStatuses = new Map(message.statuses);
+      console.log(tabStatuses);
+      allStreams.set(sender.tab.id, tabStatuses);
+      console.log(allStreams);
+      renderStreamList(allStreams);
+    } else if (message.description === 'status-update') {
+      const tabStatuses = allStreams[sender.tab.id] || new Map();
+      tabStatuses.set(message.streamId, message.status);
+      allStreams.set(sender.tab.id, tabStatuses);
+      renderStreamList(allStreams);
+    }
   };
-  browser.runtime.sendMessage({
-    background: 'ping',
+
+  browser.runtime.onMessage.addListener(statusMessageHandler);
+  window.onclose = () => {
+    browser.runtime.onMessage.removeListener(statusMessageHandler);
+  };
+
+  browser.tabs.query({}).then((allTabs) => {
+    allTabs.forEach((tab) => {
+      if (!tab.id) {
+        return;
+      }
+      browser.tabs.sendMessage(tab.id, {
+        command: 'get-all',
+      } as GetAllMessage)
+        .catch(e => { })
+    });
   });
 };
 
 (() => {
   console.log('[popup] executing script');
 
+  const allStreams: StreamsStore = new Map();
+
   browser.tabs.executeScript({
     file: '/src/content_scripts/build_content.js',
   })
     .catch((e) => console.log('[popup] there was some error in executing', e))
-    .then(addListeners);
+    .then(() => addListeners(allStreams));
 })();
