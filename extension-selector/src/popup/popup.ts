@@ -2,45 +2,49 @@ import { browser, Runtime } from 'webextension-polyfill-ts';
 
 type StreamsStore = Map<number, Map<number, PlayStatus>>;
 
-const renderStreamList = (allStreams: StreamsStore) => {
+const renderStreamList = async (allStreams: StreamsStore) => {
   const container = document.getElementById('elements-list-container')!;
-  container.innerHTML = ''; // clear children of the list
+  container.innerHTML = 'loading...'; // clear children of the list
 
   let numRendered = 0;
 
   const elementsList = document.createElement('ul');
-  // TODO - we need to render AFTER browser tab information has been retrieved
+  const allTabs = await browser.tabs.query({});
+  const tabMap = new Map(
+    allTabs.filter(tab => tab.id && tab.title)
+      .map(tab => [tab.id!, tab])
+  );
   allStreams.forEach((tabStreams, tabId) => {
     console.log(tabStreams);
-    browser.tabs.get(tabId)
-      .then((tabInfo) => {
-        console.log('[popup] got tab info');
-        tabStreams.forEach((status, streamId) => {
-          console.log('status and streamid', status, streamId);
-          console.log('num rendered', numRendered);
-          numRendered += 1;
-          console.log('num rendered after', numRendered);
-          const entry = document.createElement('li');
-          entry.innerText = `title: ${tabInfo.title}`
-            + ` stream: ${streamId}`
-            + ` status: ${status}`;
+    const tabInfo = tabMap.get(tabId);
+    if (!tabInfo) {
+      console.error(`[popup] unable to find info for tab ${tabId}`);
+    }
+    tabStreams.forEach((status, streamId) => {
+      console.log('status and streamid', status, streamId);
+      console.log('num rendered', numRendered);
+      numRendered += 1;
+      console.log('num rendered after', numRendered);
+      const entry = document.createElement('li');
+      entry.innerText = `title: ${tabInfo?.title}`
+        + ` stream: ${streamId}`
+        + ` status: ${status}`;
 
-          const deleteButton = document.createElement('button');
-          deleteButton.innerText = 'delete';
-          const deleteHandler = () => {
-            browser.tabs.sendMessage(tabId, {
-              command: 'stop-stream',
-              streamId,
-            } as StopStreamMessage)
-              .catch((e) => console.log('[popup] failed to stop: ', tabId, streamId, e));
-          }
-          deleteButton.addEventListener('click', deleteHandler);
-          entry.appendChild(deleteButton);
-          elementsList.appendChild(entry);
-        })
-      })
-      .catch(e => console.error(e));
+      const deleteButton = document.createElement('button');
+      deleteButton.innerText = 'delete';
+      const deleteHandler = () => {
+        browser.tabs.sendMessage(tabId, {
+          command: 'stop-stream',
+          streamId,
+        } as StopStreamMessage)
+          .catch((e) => console.log('[popup] failed to stop: ', tabId, streamId, e));
+      }
+      deleteButton.addEventListener('click', deleteHandler);
+      entry.appendChild(deleteButton);
+      elementsList.appendChild(entry);
+    })
   });
+  container.innerHTML = '';
   container.appendChild(elementsList);
 
   console.log('num rendered final', numRendered);
@@ -126,7 +130,7 @@ const addListeners = (allStreams: StreamsStore) => {
   };
 
   browser.runtime.onMessage.addListener(statusMessageHandler);
-  window.onclose = () => {
+  window.onblur = () => {
     browser.runtime.onMessage.removeListener(statusMessageHandler);
   };
 
