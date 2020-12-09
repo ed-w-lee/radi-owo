@@ -50,20 +50,6 @@ pub fn users_post(
         .and_then(create_user)
 }
 
-// fn get_conn(pool: PgPool) -> impl Filter<Extract = (PooledPg,), Error = warp::Rejection> + Clone {
-//     warp::any()
-//         .map(move || pool.clone())
-//         .map(|pool: PgPool| async move {
-//             match pool.get() {
-//                 Ok(conn) => Ok(conn),
-//                 Err(_) => {
-//                     error!("Unable to start maintain connection");
-//                     Err(reject::custom(errors::DatabaseError))
-//                 }
-//             }
-//         })
-// }
-
 fn with_db(pool: PgPool) -> impl Filter<Extract = (PgPool,), Error = Infallible> + Clone {
     warp::any().map(move || pool.clone())
 }

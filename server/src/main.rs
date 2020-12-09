@@ -21,7 +21,9 @@ async fn main() {
     let db_url = env::var("DATABASE_URL").expect("Unable to find DATABASE_URL");
     let pool = db::pg_pool(db_url);
 
-    let routes = routes(pool).with(warp::log("server::routes"));
+    let routes = routes(pool)
+        .with(warp::log("server::routes"))
+        .recover(errors::handle_error);
 
     info!("Start the server");
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
