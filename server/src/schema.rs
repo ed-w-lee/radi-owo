@@ -15,6 +15,8 @@ table! {
         display_name -> Varchar,
         email -> Varchar,
         created_at -> Timestamptz,
+        pass_hash -> Bytea,
+        salt -> Bytea,
     }
 }
 

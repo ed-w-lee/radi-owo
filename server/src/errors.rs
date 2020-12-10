@@ -1,12 +1,18 @@
-use serde::Serialize;
-use std::error::Error;
+use std::num::TryFromIntError;
 
-use warp::{hyper::StatusCode, reject::Reject, Rejection, Reply};
+use serde::Serialize;
+
+use warp::{
+    hyper::StatusCode,
+    reject::{self, Reject},
+    Rejection, Reply,
+};
 
 #[derive(Debug)]
 pub enum MyError {
     UnexpectedError,
     DBConnectionError,
+    AuthError(String),
     DBError(diesel::result::Error),
 }
 
@@ -16,7 +22,20 @@ impl From<diesel::result::Error> for MyError {
     }
 }
 
+impl From<TryFromIntError> for MyError {
+    fn from(e: TryFromIntError) -> Self {
+        error!("{:#?}", e);
+        MyError::UnexpectedError
+    }
+}
+
 impl Reject for MyError {}
+
+impl From<MyError> for Rejection {
+    fn from(e: MyError) -> Self {
+        reject::custom(e)
+    }
+}
 
 #[derive(Debug, Serialize)]
 struct ErrorMessage {
@@ -39,6 +58,10 @@ pub async fn handle_error(err: Rejection) -> Result<impl Reply, Rejection> {
                 error!("{:#?}", my_err);
                 code = StatusCode::INTERNAL_SERVER_ERROR;
                 message = "Unexpected error.".to_string();
+            }
+            MyError::AuthError(msg) => {
+                code = StatusCode::FORBIDDEN;
+                message = msg.clone();
             }
             MyError::DBConnectionError => {
                 error!("{:#?}", my_err);

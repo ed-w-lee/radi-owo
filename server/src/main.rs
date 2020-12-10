@@ -3,11 +3,13 @@ extern crate log;
 #[macro_use]
 extern crate diesel;
 
+mod auth;
 mod db;
 mod errors;
 mod handlers;
 mod routes;
 mod schema;
+mod settings;
 
 use std::env;
 use warp::Filter;

@@ -4,6 +4,8 @@ CREATE TABLE users (
   display_name VARCHAR(255) NOT NULL,
   email        VARCHAR(255) NOT NULL,
   created_at   TIMESTAMPTZ  NOT NULL,
+  pass_hash    BYTEA        NOT NULL,
+  salt         BYTEA        NOT NULL,
   PRIMARY KEY(id),
   UNIQUE(email),
   UNIQUE(display_name)

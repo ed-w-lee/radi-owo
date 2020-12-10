@@ -27,7 +27,6 @@ pub struct ListOptions {
 
 #[derive(Debug, Deserialize)]
 pub struct RoomCreateReq {
-    pub user_id: Uuid,
     pub name: String,
 }
 
@@ -98,13 +97,14 @@ pub async fn list_rooms(
 }
 
 pub async fn create_room(
-    create: RoomCreateReq,
     pool: PgPool,
+    req_user_id: Uuid,
+    create: RoomCreateReq,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let to_create = Room {
         id: Uuid::new_v4(),
         room_name: create.name,
-        user_id: create.user_id,
+        user_id: req_user_id,
         host_status: HostStatus::Stopped as i16,
         created_at: Utc::now(),
         last_hosted: None,

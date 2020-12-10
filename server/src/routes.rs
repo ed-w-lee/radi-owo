@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use serde::de::DeserializeOwned;
 use warp::Filter;
 
-use crate::{db::PgPool, handlers::*};
+use crate::{auth::for_authorized, db::PgPool, handlers::*};
 
 /// The 4 TODOs filters combined.
 pub fn routes(
@@ -11,7 +11,7 @@ pub fn routes(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let rooms = rooms_get(pool.clone()).or(rooms_post(pool.clone()));
 
-    let users = users_post(pool.clone());
+    let users = users_post(pool.clone()).or(sessions_post(pool.clone()));
 
     let routes = rooms.or(users);
     routes
@@ -34,8 +34,9 @@ pub fn rooms_post(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("rooms")
         .and(warp::post())
-        .and(json_body::<RoomCreateReq>())
         .and(with_db(pool))
+        .and(for_authorized())
+        .and(json_body::<RoomCreateReq>())
         .and_then(create_room)
 }
 
@@ -48,6 +49,17 @@ pub fn users_post(
         .and(json_body::<UserCreateReq>())
         .and(with_db(pool))
         .and_then(create_user)
+}
+
+/// POST /sessions with JSON body (this logs someone in)
+pub fn sessions_post(
+    pool: PgPool,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("sessions")
+        .and(warp::post())
+        .and(json_body::<UserLoginReq>())
+        .and(with_db(pool))
+        .and_then(login_user)
 }
 
 fn with_db(pool: PgPool) -> impl Filter<Extract = (PgPool,), Error = Infallible> + Clone {

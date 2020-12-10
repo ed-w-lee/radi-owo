@@ -11,12 +11,33 @@ use crate::schema::*;
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 pub type PooledPg = PooledConnection<ConnectionManager<PgConnection>>;
 
-#[derive(Debug, Identifiable, Queryable, Insertable, Serialize)]
+#[derive(Identifiable, Queryable, Insertable)]
 pub struct User {
     pub id: Uuid,
     pub display_name: String,
     pub email: String,
     pub created_at: DateTime<Utc>,
+    pub pass_hash: Vec<u8>,
+    pub salt: Vec<u8>,
+}
+
+#[derive(Debug, Serialize, Queryable)]
+pub struct UserQueryResult {
+    pub id: Uuid,
+    pub display_name: String,
+    pub email: String,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<User> for UserQueryResult {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            display_name: user.display_name,
+            email: user.email,
+            created_at: user.created_at,
+        }
+    }
 }
 
 // The query parameters for list_todos.
