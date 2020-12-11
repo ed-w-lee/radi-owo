@@ -5,7 +5,7 @@ use futures::future;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use warp::{reject, Filter, Rejection};
+use warp::{Filter, Rejection};
 
 use crate::{errors::MyError, settings::JWT_SECRET};
 
@@ -49,14 +49,14 @@ pub fn for_authorized() -> impl Filter<Extract = (Uuid,), Error = Rejection> + C
         match iter.next() {
             Some(s) if s.to_ascii_lowercase() == "bearer" => (),
             _ => {
-                return future::err(reject::custom(MyError::AuthError(
+                return future::err(Rejection::from(MyError::AuthError(
                     "authorization header missing value".to_owned(),
                 )));
             }
         };
         let token = match iter.next() {
             None => {
-                return future::err(reject::custom(MyError::AuthError(
+                return future::err(Rejection::from(MyError::AuthError(
                     "authorization header not bearer".to_owned(),
                 )));
             }
@@ -70,7 +70,31 @@ pub fn for_authorized() -> impl Filter<Extract = (Uuid,), Error = Rejection> + C
         match token_data {
             Err(e) => {
                 error!("{:#?}", e);
-                future::err(reject::custom(MyError::AuthError(
+                future::err(Rejection::from(MyError::AuthError(
+                    "unable to decode token".to_owned(),
+                )))
+            }
+            Ok(data) => future::ok(data.claims.radiowo_userid),
+        }
+    })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WSAuthInfo {
+    pub token: String,
+}
+
+pub fn for_authorized_ws() -> impl Filter<Extract = (Uuid,), Error = Rejection> + Clone {
+    warp::query::<WSAuthInfo>().and_then(|info: WSAuthInfo| {
+        let token_data = decode::<AuthClaims>(
+            &info.token,
+            &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+            &Validation::default(),
+        );
+        match token_data {
+            Err(e) => {
+                error!("{:#?}", e);
+                future::err(Rejection::from(MyError::AuthError(
                     "unable to decode token".to_owned(),
                 )))
             }

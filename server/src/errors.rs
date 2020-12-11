@@ -12,6 +12,7 @@ use warp::{
 pub enum MyError {
     UnexpectedError,
     DBConnectionError,
+    WSConnectionAlreadyExists,
     AuthError(String),
     DBError(diesel::result::Error),
 }
@@ -48,7 +49,7 @@ pub async fn handle_error(err: Rejection) -> Result<impl Reply, Rejection> {
     let message;
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
-        message = "Resource not found".to_string();
+        message = "Resource not found".to_owned();
     } else if let Some(e) = err.find::<warp::filters::body::BodyDeserializeError>() {
         code = StatusCode::BAD_REQUEST;
         message = e.to_string();
@@ -57,23 +58,27 @@ pub async fn handle_error(err: Rejection) -> Result<impl Reply, Rejection> {
             MyError::UnexpectedError => {
                 error!("{:#?}", my_err);
                 code = StatusCode::INTERNAL_SERVER_ERROR;
-                message = "Unexpected error.".to_string();
+                message = "Unexpected error.".to_owned();
             }
             MyError::AuthError(msg) => {
                 code = StatusCode::FORBIDDEN;
                 message = msg.clone();
             }
+            MyError::WSConnectionAlreadyExists => {
+                code = StatusCode::CONFLICT;
+                message = "Attempted to connect when connection already exists.".to_owned();
+            }
             MyError::DBConnectionError => {
                 error!("{:#?}", my_err);
                 code = StatusCode::INTERNAL_SERVER_ERROR;
-                message = "Database is likely busy. Try again later.".to_string();
+                message = "Database is likely busy. Try again later.".to_owned();
             }
             MyError::DBError(db_err) => match db_err {
                 diesel::result::Error::InvalidCString(_) => {
                     code = StatusCode::BAD_REQUEST;
                     message =
                         "Something happened with your request. Don't be doing anything bad now."
-                            .to_string();
+                            .to_owned();
                 }
                 diesel::result::Error::DatabaseError(kind, info) => match kind {
                     diesel::result::DatabaseErrorKind::UniqueViolation => {
@@ -87,13 +92,13 @@ pub async fn handle_error(err: Rejection) -> Result<impl Reply, Rejection> {
                     _ => {
                         error!("{:#?}", my_err);
                         code = StatusCode::INTERNAL_SERVER_ERROR;
-                        message = "Unknown database error. Try again later.".to_string();
+                        message = "Unknown database error. Try again later.".to_owned();
                     }
                 },
                 _ => {
                     error!("{:#?}", my_err);
                     code = StatusCode::INTERNAL_SERVER_ERROR;
-                    message = "Unknown database error. Try again later.".to_string();
+                    message = "Unknown database error. Try again later.".to_owned();
                 }
             },
         }
