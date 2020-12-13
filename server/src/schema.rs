@@ -5,7 +5,7 @@ table! {
         room_name -> Varchar,
         host_status -> Int2,
         created_at -> Timestamptz,
-        last_hosted -> Nullable<Timestamptz>,
+        last_connected -> Nullable<Timestamptz>,
     }
 }
 

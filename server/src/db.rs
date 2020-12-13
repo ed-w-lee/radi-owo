@@ -49,7 +49,7 @@ pub struct Room {
     pub room_name: String,
     pub host_status: i16,
     pub created_at: DateTime<Utc>,
-    pub last_hosted: Option<DateTime<Utc>>,
+    pub last_connected: Option<DateTime<Utc>>,
 }
 
 pub fn pg_pool(db_url: String) -> PgPool {

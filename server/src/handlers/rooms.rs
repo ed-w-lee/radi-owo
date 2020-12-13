@@ -37,7 +37,7 @@ pub struct RoomResponse {
     pub host_name: Option<String>,
     pub host_status: HostStatus,
     pub created_at: DateTime<Utc>,
-    pub last_hosted: Option<DateTime<Utc>>,
+    pub last_connected: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Queryable)]
@@ -88,7 +88,7 @@ pub async fn list_rooms(
                     name: room.room_name,
                     host_status: HostStatus::from(room.host_status),
                     created_at: room.created_at,
-                    last_hosted: room.last_hosted,
+                    last_connected: room.last_connected,
                 })
                 .collect();
             Ok(json(&response))
@@ -107,7 +107,7 @@ pub async fn create_room(
         user_id: req_user_id,
         host_status: HostStatus::Stopped as i16,
         created_at: Utc::now(),
-        last_hosted: None,
+        last_connected: None,
     };
 
     let res = db_txn(pool, false, |db| {

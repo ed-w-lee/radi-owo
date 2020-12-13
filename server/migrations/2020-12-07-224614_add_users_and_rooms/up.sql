@@ -12,12 +12,12 @@ CREATE TABLE users (
 );
 
 CREATE TABLE rooms (
-  id          uuid         NOT NULL,
-  user_id     uuid         NOT NULL,
-  room_name   VARCHAR(255) NOT NULL,
-  host_status SMALLINT     NOT NULL,
-  created_at  TIMESTAMPTZ  NOT NULL,
-  last_hosted TIMESTAMPTZ,
+  id             uuid         NOT NULL,
+  user_id        uuid         NOT NULL,
+  room_name      VARCHAR(255) NOT NULL,
+  host_status    SMALLINT     NOT NULL,
+  created_at     TIMESTAMPTZ  NOT NULL,
+  last_connected TIMESTAMPTZ,
   PRIMARY KEY(id),
   CONSTRAINT fk_user
     FOREIGN KEY(user_id)

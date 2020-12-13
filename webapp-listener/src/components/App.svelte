@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ListenForm from "./ListenForm.svelte";
+
 	export let name: string;
 </script>
 
@@ -36,5 +38,7 @@
 			<a href="https://svelte.dev/tutorial">Svelte tutorial</a>
 			to learn how to build Svelte apps.
 		</p>
+
+		<ListenForm />
 	</main>
 </body>

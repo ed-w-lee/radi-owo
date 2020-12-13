@@ -22,5 +22,8 @@ module.exports = {
     },
   ],
   rules: {
+    'import/extensions': [
+      'ignore'
+    ]
   },
 };

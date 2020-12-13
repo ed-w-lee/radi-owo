@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use chrono::Utc;
 use diesel::prelude::*;
 use futures::{FutureExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -21,11 +22,19 @@ use super::util::db_txn;
 // Room UUID -> Sender to host
 pub type HostConnections = Arc<RwLock<HashMap<Uuid, mpsc::Sender<Result<Message, warp::Error>>>>>;
 
-// Random connection UUID -> (Room UUID, Sender to listener)
-pub type ListenConnections = Arc<RwLock<HashMap<Uuid, mpsc::Sender<Result<Message, warp::Error>>>>>;
+// Room UUID -> Random connection UUID -> (Sender to listener)
+pub type ListenConnections =
+    Arc<RwLock<HashMap<Uuid, HashMap<Uuid, mpsc::Sender<Result<Message, warp::Error>>>>>>;
 
 #[derive(Debug, Deserialize)]
-struct FromHostMessage {
+#[serde(tag = "type")]
+enum FromHostMessage {
+    ToListener(ToListenerMessage),
+    KeepAlive,
+}
+
+#[derive(Debug, Deserialize)]
+struct ToListenerMessage {
     to: Uuid,
     msg: String,
 }
@@ -44,7 +53,7 @@ pub async fn host_room(
     conns: (HostConnections, ListenConnections),
 ) -> Result<impl warp::Reply, warp::Rejection> {
     // validate room is owned by host
-    let res = db_txn(pool, true, |db| {
+    let res = db_txn(pool.clone(), true, |db| {
         let room_result: Room = rooms.find(room_id).first(db)?;
         Ok(room_result.user_id)
     })
@@ -60,7 +69,9 @@ pub async fn host_room(
         debug!("Old connection exists");
         Err(Rejection::from(MyError::WSConnectionAlreadyExists))
     } else {
-        Ok(ws.on_upgrade(move |socket| host_connected(socket, host_conns, listen_conns, room_id)))
+        Ok(ws.on_upgrade(move |socket| {
+            host_connected(socket, host_conns, listen_conns, pool, room_id)
+        }))
     }
 }
 
@@ -68,6 +79,7 @@ async fn host_connected(
     ws: WebSocket,
     host_conns: HostConnections,
     listen_conns: ListenConnections,
+    pool: PgPool,
     room_id: Uuid,
 ) {
     let (ws_writer, mut ws_reader) = ws.split();
@@ -75,10 +87,16 @@ async fn host_connected(
     task::spawn(buf_read.forward(ws_writer).map(|result| {
         if let Err(e) = result {
             error!("websocket send error: {}", e);
+        } else {
+            debug!("finished flushing host sender");
         }
     }));
 
     host_conns.write().await.insert(room_id, buf_write);
+    listen_conns
+        .write()
+        .await
+        .insert(room_id, HashMap::default());
 
     // when host sends message, we need to direct it to the correct listener
     while let Some(result) = ws_reader.next().await {
@@ -89,14 +107,20 @@ async fn host_connected(
                 break;
             }
         };
-        handle_host_message(&listen_conns, msg).await;
+        handle_host_message(&listen_conns, pool.clone(), room_id, msg).await;
     }
 
     // host disconnected
+    listen_conns.write().await.remove(&room_id);
     host_conns.write().await.remove(&room_id);
 }
 
-async fn handle_host_message(listen_conns: &ListenConnections, msg: Message) {
+async fn handle_host_message(
+    listen_conns: &ListenConnections,
+    pool: PgPool,
+    room_id: Uuid,
+    msg: Message,
+) {
     let raw_msg = {
         if let Ok(s) = msg.to_str() {
             s
@@ -108,24 +132,46 @@ async fn handle_host_message(listen_conns: &ListenConnections, msg: Message) {
     match serde_json::from_str::<FromHostMessage>(raw_msg) {
         Err(e) => {
             error!("couldn't deserialize msg: {} due to {}", raw_msg, e);
-            return;
         }
-        Ok(msg) => {
-            let mut listeners = listen_conns.write().await;
-            let dest_result = listeners.get_mut(&msg.to);
-            match dest_result {
-                None => {
-                    debug!("listener not found: {}", msg.to);
-                    return;
-                }
-                Some(dest) => {
-                    let res = dest.send(Ok(Message::text(msg.msg))).await;
-                    if let Err(e) = res {
-                        error!("unable to send to listener, likely disconnected {}", e);
+        Ok(msg) => match msg {
+            FromHostMessage::KeepAlive => {
+                let update_result = db_txn(pool, false, |db| {
+                    let updated = diesel::update(rooms.find(room_id))
+                        .set(last_connected.eq(Utc::now()))
+                        .execute(db)?;
+                    Ok(updated == 1)
+                })
+                .await;
+                match update_result {
+                    Err(e) => {
+                        error!("{:#?}", e);
                     }
+                    Ok(updated) if !updated => {
+                        error!("couldn't update room {}, likely not present", room_id);
+                    }
+                    _ => {}
                 }
             }
-        }
+            FromHostMessage::ToListener(to_listener) => {
+                let mut listeners = listen_conns.write().await;
+                match listeners.get_mut(&room_id) {
+                    None => {
+                        debug!("room closed: {}", room_id);
+                    }
+                    Some(room_listeners) => match room_listeners.get_mut(&to_listener.to) {
+                        None => {
+                            debug!("listener not found: {}", to_listener.to);
+                        }
+                        Some(listener) => {
+                            let res = listener.send(Ok(Message::text(to_listener.msg))).await;
+                            if let Err(e) = res {
+                                error!("unable to send to listener, likely disconnected {}", e);
+                            }
+                        }
+                    },
+                }
+            }
+        },
     }
 }
 
@@ -157,11 +203,19 @@ async fn listen_connected(
     task::spawn(buf_read.forward(ws_writer).map(|result| {
         if let Err(e) = result {
             error!("websocket read error: {}", e);
+        } else {
+            debug!("finished flushing listener sender");
         }
     }));
 
     let my_uuid = Uuid::new_v4();
-    listen_conns.write().await.insert(my_uuid, buf_write);
+    match listen_conns.write().await.get_mut(&room_id) {
+        Some(listeners) => listeners.insert(room_id, buf_write),
+        None => {
+            error!("host probably disconnected");
+            return;
+        }
+    };
 
     while let Some(result) = ws_reader.next().await {
         let msg = match result {
@@ -181,7 +235,16 @@ async fn listen_connected(
     }
 
     // listener disconnected
-    listen_conns.write().await.remove(&my_uuid);
+    let mut listeners = listen_conns.write().await;
+    match listeners.get_mut(&room_id) {
+        None => {
+            debug!("room closed: {}", room_id);
+        }
+        Some(room_listeners) => {
+            room_listeners.remove(&my_uuid);
+            debug!("number of listeners: {}", room_listeners.len());
+        }
+    }
 }
 
 async fn handle_listen_message(
