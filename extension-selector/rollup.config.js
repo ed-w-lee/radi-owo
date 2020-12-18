@@ -32,7 +32,7 @@ export default [
     ...commonExternal,
   },
   {
-    input: 'src/popup/popup.ts',
+    input: 'src/popup/main.ts',
     output: {
       file: 'src/popup/build_popup.js',
       ...commonOutput,

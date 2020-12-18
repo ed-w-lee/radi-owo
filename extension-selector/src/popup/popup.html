@@ -8,11 +8,34 @@
 </head>
 
 <body>
-	<div id="elements-list-container">
+	<div id="login-section">
+		<form id="login-form">
+			<input name="email" type="email" placeholder="email" />
+			<input name="password" type="password" placeholder="password" />
+			<button type="submit" class="login">Login</button>
+		</form>
+		<a href='http://localhost:3030/signup'>Signup</a>
 	</div>
-	<div class="actions">
-		<button class="button icon-button action action-chooser">Element chooser</button>
-		<button class="button icon-button action action-clear">Clear all</button>
+	<div id="room-selection" hidden>
+		<h2>Rooms</h2>
+		<table>
+			<thead>
+				<tr>
+					<th scope="col">Name</th>
+					<th scope="col">Action</th>
+				</tr>
+			</thead>
+			<tbody id="room-selection-contents">
+			</tbody>
+		</table>
+	</div>
+	<div id="room-information" hidden>
+		<div id="elements-list-container">
+		</div>
+		<div class="actions">
+			<button class="button action action-chooser">Element chooser</button>
+			<button class="button action action-clear">Clear all</button>
+		</div>
 	</div>
 
 	<script src="build_popup.js"></script>

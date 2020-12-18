@@ -125,3 +125,35 @@ pub async fn create_room(
         Ok(room) => Ok(with_status(json(&room), StatusCode::CREATED)),
     }
 }
+
+pub async fn list_rooms_for_user(
+    for_user_id: Uuid,
+    pool: PgPool,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let rooms_to_ret = db_txn(pool, true, |db| {
+        let found_rooms = rooms.filter(user_id.eq(for_user_id)).load::<Room>(db)?;
+        let user_name: UserDisplayName = users
+            .select((schema::users::dsl::id, display_name))
+            .filter(schema::users::dsl::id.eq(for_user_id))
+            .first(db)?;
+        Ok((found_rooms, user_name))
+    })
+    .await;
+    match rooms_to_ret {
+        Err(e) => Err(reject::custom(e)),
+        Ok((found_rooms, user_name)) => {
+            let response: Vec<RoomResponse> = found_rooms
+                .into_iter()
+                .map(|room| RoomResponse {
+                    id: room.id,
+                    host_name: Some(user_name.display_name.clone()),
+                    name: room.room_name,
+                    host_status: HostStatus::from(room.host_status),
+                    created_at: room.created_at,
+                    last_connected: room.last_connected,
+                })
+                .collect();
+            Ok(json(&response))
+        }
+    }
+}

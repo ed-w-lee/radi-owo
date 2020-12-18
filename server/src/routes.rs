@@ -22,9 +22,11 @@ pub fn routes(
         rooms_listen_ws(pool.clone(), host_conns.clone(), listen_conns.clone()),
     );
 
-    let users = users_post(pool.clone()).or(sessions_post(pool.clone()));
+    let users = users_post(pool.clone()).or(user_rooms_get(pool.clone()));
 
-    let routes = rooms.or(room_conns).or(users);
+    let my_routes = my_rooms_get(pool.clone()).or(my_sessions_post(pool.clone()));
+
+    let routes = rooms.or(room_conns).or(users).or(my_routes);
     routes
 }
 
@@ -39,11 +41,32 @@ pub fn users_post(
         .and_then(create_user)
 }
 
-// POST /sessions with JSON body (this logs someone in)
-pub fn sessions_post(
+// GET /users/<id>/rooms
+pub fn user_rooms_get(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("sessions")
+    warp::path!("users" / Uuid / "rooms")
+        .and(warp::get())
+        .and(with_db(pool))
+        .and_then(list_rooms_for_user)
+}
+
+// GET /my/rooms
+pub fn my_rooms_get(
+    pool: PgPool,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("my" / "rooms")
+        .and(warp::get())
+        .and(for_authorized())
+        .and(with_db(pool))
+        .and_then(list_rooms_for_user)
+}
+
+// POST /my/sessions with JSON body (this logs someone in)
+pub fn my_sessions_post(
+    pool: PgPool,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("my" / "sessions")
         .and(warp::post())
         .and(json_body::<UserLoginReq>())
         .and(with_db(pool))

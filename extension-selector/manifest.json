@@ -9,7 +9,8 @@
 	"permissions": [
 		"activeTab",
 		"tabs",
-		"storage"
+		"storage",
+		"*://localhost/*"
 	],
 	"browser_action": {
 		"default_icon": {
