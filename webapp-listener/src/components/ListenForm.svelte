@@ -1,20 +1,19 @@
 <script lang="ts">
-  import listenTo from "../actions/connect";
+  import startListenConnection from "../actions/connect";
+  import AudioPlayer from "./AudioPlayer.svelte";
 
   let roomId: string;
-  let ws: WebSocket | null = null;
+  let pc: RTCPeerConnection | null = null;
   let counter: number = 0;
+  let paused: boolean;
 
-  const onConnect = (ev: MouseEvent) => {
-    ws = listenTo(roomId);
-    ws.onclose = () => {
-      ws = null;
-    };
-  };
-
-  const onSend = (ev: MouseEvent) => {
-    counter += 1;
-    ws.send(counter.toString());
+  const onListen = async () => {
+    console.log("calling onListen");
+    try {
+      pc = await startListenConnection(roomId);
+    } catch (err) {
+      console.error(err);
+    }
   };
 </script>
 
@@ -44,12 +43,9 @@
   } */
 </style>
 
+<AudioPlayer connection={pc} />
+
 <form>
   <input bind:value={roomId} name="roomId" placeholder="room id" />
-  <button on:click|preventDefault={onConnect} disabled={ws !== null}>
-    Connect
-  </button>
-  <button on:click|preventDefault={onSend} disabled={ws === null}>
-    Send
-  </button>
+  <button on:click|preventDefault={onListen}> Listen </button>
 </form>

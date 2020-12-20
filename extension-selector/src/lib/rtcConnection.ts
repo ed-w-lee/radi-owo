@@ -6,7 +6,7 @@ const config = {
 
 const sanitize = (obj) => JSON.parse(JSON.stringify(obj));
 
-export default function initRTCPeerConnection(portParam: Runtime.Port, polite: boolean) {
+export function initLocalPeerConnection(portParam: Runtime.Port, polite: boolean) {
   console.log('initializing rtc peer connection');
   const port = portParam;
   // negotiate WebRTC connection
@@ -15,10 +15,10 @@ export default function initRTCPeerConnection(portParam: Runtime.Port, polite: b
   pc.onnegotiationneeded = async () => {
     try {
       makingOffer = true;
-      console.log('setting local description for negotiation needed');
+      console.debug('setting local description for negotiation needed');
       // @ts-ignore: missing argument is OK
       await pc.setLocalDescription();
-      console.log('local description', pc.localDescription);
+      console.debug('local description', pc.localDescription);
       port.postMessage({
         description: sanitize(pc.localDescription),
       });
@@ -35,14 +35,14 @@ export default function initRTCPeerConnection(portParam: Runtime.Port, polite: b
   let ignoreOffer = false;
   port.onMessage.addListener(async ({ description, candidate }) => {
     try {
-      console.log('received message with', description, candidate);
+      console.debug('received message with', description, candidate);
       if (description) {
         const offerCollision = description.type === 'offer'
           && (makingOffer || pc.signalingState !== 'stable');
         ignoreOffer = !polite && offerCollision;
         if (ignoreOffer) return;
 
-        console.log('remote description', description);
+        console.debug('remote description', description);
         await pc.setRemoteDescription(description);
         if (description.type === 'offer') {
           // @ts-ignore: missing argument is OK
@@ -53,7 +53,7 @@ export default function initRTCPeerConnection(portParam: Runtime.Port, polite: b
         }
       } else if (candidate) {
         try {
-          console.log('candidate', candidate);
+          console.debug('candidate', candidate);
           await pc.addIceCandidate(candidate);
         } catch (err) {
           if (!ignoreOffer) throw err;
@@ -66,5 +66,76 @@ export default function initRTCPeerConnection(portParam: Runtime.Port, polite: b
 
   console.log('initialized')
 
+  return pc;
+}
+
+const wsSendToListener = (ws: WebSocket, clientId: string, msg) => {
+  ws.send(JSON.stringify({
+    type: 'ToListener',
+    to: clientId,
+    msg: JSON.stringify(msg),
+  }));
+};
+
+export type WSMessageHandler = ({ description, candidate }) => Promise<void>;
+export function initHostPeerConnection(handlers: Map<string, WSMessageHandler>, wsParam: WebSocket, clientId: string) {
+  console.log('[host] initializing rtc peer connection', clientId);
+  const ws = wsParam;
+
+  const pc = new RTCPeerConnection(config);
+  const polite = true;
+  let makingOffer = false;
+  pc.onnegotiationneeded = async () => {
+    try {
+      makingOffer = true;
+      console.debug('[host] setting local description for negotiation needed');
+      // @ts-ignore: missing argument is OK
+      await pc.setLocalDescription();
+      console.debug('[host] local description', pc.localDescription);
+      wsSendToListener(ws, clientId, {
+        description: sanitize(pc.localDescription)
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      makingOffer = false;
+    }
+  };
+  pc.onicecandidate = ({ candidate }) => wsSendToListener(ws, clientId, {
+    candidate: sanitize(candidate)
+  });
+
+  let ignoreOffer = false;
+  handlers.set(clientId, async ({ description, candidate }) => {
+    try {
+      console.debug('[host] received message with', description, candidate);
+      if (description) {
+        const offerCollision = description.type === 'offer'
+          && (makingOffer || pc.signalingState !== 'stable');
+        ignoreOffer = !polite && offerCollision;
+        if (ignoreOffer) return;
+
+        console.debug('[host] remote description', description);
+        if (description.type === 'offer') {
+          // @ts-ignore: missing argument is OK
+          await pc.setLocalDescription();
+          wsSendToListener(ws, clientId, {
+            description: sanitize(pc.localDescription),
+          });
+        }
+      } else if (candidate) {
+        try {
+          console.debug('[host] candidate', candidate);
+          await pc.addIceCandidate(candidate);
+        } catch (err) {
+          if (!ignoreOffer) throw err;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  console.log('[host] initialized');
   return pc;
 }

@@ -160,7 +160,7 @@ async fn handle_host_message(
                     }
                     Some(room_listeners) => match room_listeners.get_mut(&to_listener.to) {
                         None => {
-                            debug!("listener not found: {}", to_listener.to);
+                            debug!("listener not found: {}, {:#?}", to_listener.to, to_listener);
                         }
                         Some(listener) => {
                             let res = listener.send(Ok(Message::text(to_listener.msg))).await;
@@ -210,7 +210,7 @@ async fn listen_connected(
 
     let my_uuid = Uuid::new_v4();
     match listen_conns.write().await.get_mut(&room_id) {
-        Some(listeners) => listeners.insert(room_id, buf_write),
+        Some(listeners) => listeners.insert(my_uuid, buf_write),
         None => {
             error!("host probably disconnected");
             return;
@@ -261,7 +261,7 @@ async fn handle_listen_message(
         }
     };
 
-    debug!("received listener message: {}", msg_str);
+    debug!("received listener message: {} from {}", msg_str, from_id);
 
     let to_send = ToHostMessage {
         from: from_id.clone(),
@@ -282,7 +282,7 @@ async fn handle_listen_message(
                 error!("unable to send to host, likely disconnected {}", e);
                 Err(())
             } else {
-                debug!("successfully sent mesage");
+                debug!("successfully sent mesage to host");
                 Ok(())
             }
         }

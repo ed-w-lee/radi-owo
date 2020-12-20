@@ -7,7 +7,6 @@ export type State = {
   user?: UserInfo,
   allRooms?: RoomInfo[],
   currentRoom?: string,
-  allStreams?: StreamsStore,
 };
 
 export type SetStateFn = (newState: State) => void;
@@ -19,7 +18,6 @@ export const CLEAN_STATE: State = {
   user: undefined,
   allRooms: undefined,
   currentRoom: undefined,
-  allStreams: undefined,
 };
 
 

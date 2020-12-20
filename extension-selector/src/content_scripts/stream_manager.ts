@@ -7,7 +7,7 @@
 import 'webrtc-adapter';
 import { browser } from 'webextension-polyfill-ts';
 
-import initRTCPeerConnection from '../lib/rtcConnection.js';
+import { initLocalPeerConnection } from '../lib/rtcConnection.js';
 import captureStream from '../lib/polyfill.js';
 import generateId from '../lib/lib.js';
 
@@ -118,7 +118,7 @@ declare global {
       name: `${streamId}-${generateId(10)}`,
     });
     console.log('[content] connected to port', port);
-    const pc = initRTCPeerConnection(port, false);
+    const pc = initLocalPeerConnection(port, false);
     console.log('[content] attempting to retrieve audio tracks', port, stream.getAudioTracks());
     stream.getAudioTracks().forEach((track) => {
       pc.addTrack(track);

@@ -29,7 +29,7 @@ export const login = async (email: string, password: string): Promise<LoginInfo 
     email: email,
     password: password,
   }));
-  const response = await fetch(`${API_SERVER}/sessions`, {
+  const response = await fetch(`${API_SERVER}/my/sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

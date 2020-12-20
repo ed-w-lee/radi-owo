@@ -1,10 +1,10 @@
-import { createRoom, getMyRooms, GetRoomsResponse } from "../net";
+import { createRoom, getMyRooms } from "../net";
 import { CLEAN_STATE, SetStateFn, State } from "../state";
-import { hideAllExcept } from "./util";
+import { bgPingPong, hideAllExcept } from "./util";
 
 export const renderRoomsList = async (state: State, setState: SetStateFn) => {
-  if (!state.allRooms) {
-    console.error("RenderRoomsList FAILED DUE TO ALLROOMS");
+  if (!state.authToken || !state.allRooms) {
+    console.error("RenderRoomsList FAILED DUE TO AUTHTOKEN OR ALLROOMS");
     return;
   }
 
@@ -24,7 +24,22 @@ export const renderRoomsList = async (state: State, setState: SetStateFn) => {
     useEntryButton.innerHTML = 'Host';
     useEntryButton.onclick = () => {
       console.log('clicked to use room:', info.id);
-    }
+      if (state.authToken) {
+        bgPingPong({
+          command: 'start-room',
+          roomId: info.id,
+          authToken: state.authToken,
+        }, (msg) => {
+          if (msg.description === 'action-response') {
+            if (msg.success) {
+              setState({ currentRoom: info.id });
+              return;
+            }
+          }
+          console.error("unexpected response from background");
+        });
+      }
+    };
     actionEntry.appendChild(useEntryButton);
 
     row.appendChild(nameEntry);
@@ -82,6 +97,14 @@ export const attemptGetRooms = async (state: State, setState: SetStateFn) => {
   }
 
   console.log('gotten rooms:', roomsRes);
-  // TODO - we'll need to handle getting current room or something
-  setState({ allRooms: roomsRes });
+
+  bgPingPong({
+    command: 'query-room'
+  }, (msg) => {
+    if (msg.description === 'room-info') {
+      setState({ allRooms: roomsRes, currentRoom: msg.roomId || undefined });
+      return;
+    }
+    console.error("unexpected response from background");
+  });
 }
