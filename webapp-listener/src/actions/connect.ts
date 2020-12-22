@@ -71,6 +71,13 @@ export function initPeerConnection(wsParam: WebSocket) {
     }
   };
 
+  pc.onconnectionstatechange = () => {
+    if (['connected', 'closed', 'failed'].includes(pc.connectionState)) {
+      console.log('peer connection state', pc.connectionState);
+      ws.close();
+    }
+  }
+
   console.log('initialized')
 
   return pc;

@@ -1,4 +1,5 @@
-import { Runtime } from "webextension-polyfill-ts";
+import { Runtime } from 'webextension-polyfill-ts';
+import 'webrtc-adapter';
 
 const config = {
   iceServers: [],
@@ -64,7 +65,7 @@ export function initLocalPeerConnection(portParam: Runtime.Port, polite: boolean
     }
   });
 
-  console.log('initialized')
+  console.log('initialized');
 
   return pc;
 }
@@ -78,7 +79,12 @@ const wsSendToListener = (ws: WebSocket, clientId: string, msg) => {
 };
 
 export type WSMessageHandler = ({ description, candidate }) => Promise<void>;
-export function initHostPeerConnection(handlers: Map<string, WSMessageHandler>, wsParam: WebSocket, clientId: string) {
+
+export function initHostPeerConnection(
+  handlers: Map<string, WSMessageHandler>,
+  wsParam: WebSocket,
+  clientId: string,
+) {
   console.log('[host] initializing rtc peer connection', clientId);
   const ws = wsParam;
 
@@ -93,7 +99,7 @@ export function initHostPeerConnection(handlers: Map<string, WSMessageHandler>, 
       await pc.setLocalDescription();
       console.debug('[host] local description', pc.localDescription);
       wsSendToListener(ws, clientId, {
-        description: sanitize(pc.localDescription)
+        description: sanitize(pc.localDescription),
       });
     } catch (err) {
       console.error(err);
@@ -102,13 +108,15 @@ export function initHostPeerConnection(handlers: Map<string, WSMessageHandler>, 
     }
   };
   pc.onicecandidate = ({ candidate }) => wsSendToListener(ws, clientId, {
-    candidate: sanitize(candidate)
+    candidate: sanitize(candidate),
   });
 
   let ignoreOffer = false;
-  handlers.set(clientId, async ({ description, candidate }) => {
+  handlers.set(clientId, async (obj) => {
+    console.log('[host] obj:', obj);
+    const { candidate, description } = obj;
+    console.debug('[host] received message with', description, candidate);
     try {
-      console.debug('[host] received message with', description, candidate);
       if (description) {
         const offerCollision = description.type === 'offer'
           && (makingOffer || pc.signalingState !== 'stable');
@@ -116,6 +124,7 @@ export function initHostPeerConnection(handlers: Map<string, WSMessageHandler>, 
         if (ignoreOffer) return;
 
         console.debug('[host] remote description', description);
+        await pc.setRemoteDescription(description);
         if (description.type === 'offer') {
           // @ts-ignore: missing argument is OK
           await pc.setLocalDescription();
@@ -124,8 +133,8 @@ export function initHostPeerConnection(handlers: Map<string, WSMessageHandler>, 
           });
         }
       } else if (candidate) {
+        console.debug('[host] candidate', candidate);
         try {
-          console.debug('[host] candidate', candidate);
           await pc.addIceCandidate(candidate);
         } catch (err) {
           if (!ignoreOffer) throw err;

@@ -1,4 +1,5 @@
 // Use rollup for generate content script since it doesn't support modules
+import replace from '@rollup/plugin-replace';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
@@ -9,8 +10,15 @@ const commonOutput = {
     + '/* Generated with Rollup from stream_manager.js */',
 };
 
+const env = process.env.BUILD;
+
 const commonExternal = {
-  plugins: [nodeResolve(), commonjs(), typescript()],
+  plugins: [
+    nodeResolve(),
+    commonjs(),
+    typescript(),
+    replace(),
+  ],
 };
 
 export default [

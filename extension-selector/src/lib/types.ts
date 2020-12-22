@@ -1,78 +1,82 @@
-type PlayStatus = 'playing' | 'paused';
+export type PlayStatus = 'playing' | 'paused';
 
 // -------------------------------------
 // from popup to content script messages
 // -------------------------------------
 
-type ChooseElementMessage = {
+export type ChooseElementMessage = {
   command: 'choose-element',
   tabId: number,
 }
 
-type StopStreamMessage = {
+export type StopStreamMessage = {
   command: 'stop-stream',
   streamId: number,
 }
 
-type StopAllMessage = {
+export type StopAllMessage = {
   command: 'stop-all',
 }
 
-type GetAllMessage = {
+export type GetAllMessage = {
   command: 'get-all'
 }
 
-type ToContentMessage = ChooseElementMessage | StopStreamMessage | StopAllMessage | GetAllMessage;
+export type ToContentMessage =
+  ChooseElementMessage
+  | StopStreamMessage
+  | StopAllMessage
+  | GetAllMessage;
 
 // -------------------------------------
 // from content script to popup messages
 // -------------------------------------
 
-type StatusUpdateMessage = {
+export type StatusUpdateMessage = {
   description: 'status-update',
   streamId: number,
   status: PlayStatus,
 }
 
-type AllStatusesMessage = {
+export type AllStatusesMessage = {
   description: 'status-all',
   statuses: [number, PlayStatus][],
 };
 
-type FromContentMessage = StatusUpdateMessage | AllStatusesMessage;
+export type FromContentMessage = StatusUpdateMessage | AllStatusesMessage;
 
 // ----------------------------------------
 // from popup to background script messages
 // ----------------------------------------
 
-type StartRoomMessage = {
+export type StartRoomMessage = {
   command: 'start-room',
   roomId: string,
   authToken: string,
 };
 
-type QueryRoomMessage = {
+export type QueryRoomMessage = {
   command: 'query-room',
 };
 
-type StopRoomMessage = {
+export type StopRoomMessage = {
   command: 'stop-room',
 };
 
-type ToBackgroundMessage = StartRoomMessage | QueryRoomMessage | StopRoomMessage;
+export type ToBackgroundMessage = StartRoomMessage | QueryRoomMessage | StopRoomMessage;
 
 // ----------------------------------------
 // from background script to popup messages
 // ----------------------------------------
 
-type ActionResponseMessage = {
+export type ActionResponseMessage = {
   description: 'action-response',
   success: boolean,
 };
 
-type RoomInfoMessage = {
+export type RoomInfoMessage = {
   description: 'room-info',
   roomId: string | null,
 };
 
-type FromBackgroundMessage = RoomInfoMessage | ActionResponseMessage;
+export type FromBackgroundMessage = RoomInfoMessage | ActionResponseMessage;

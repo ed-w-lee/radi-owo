@@ -6,7 +6,20 @@ extends:
   - airbnb-base
 parserOptions:
   ecmaVersion: 12
+parser: "@typescript-eslint/parser"
+plugins:
+  - "@typescript-eslint"
+settings:
+  "import/resolver":
+    node:
+      extensions:
+        - ".js"
+        - ".ts"
+      moduleDirectory:
+        - "node_modules"
+        - "src"
 rules:
   no-console: "off"
   no-use-before-define: [ 1, "nofunc" ]
   import/extensions: 0
+  "@typescript-eslint/no-unused-vars": "warn"

@@ -10,14 +10,17 @@
     return {
       update(newConn: RTCPeerConnection | null) {
         if (currConn != newConn) {
+          console.log("updating peer connection", newConn);
           currConn?.close();
           currConn = newConn;
 
           myStream = new MediaStream();
           if (currConn) {
+            console.log("adding ontrack listener", newConn);
             currConn.ontrack = (trackEv) => {
               const { track } = trackEv;
               track.onunmute = () => {
+                console.log("adding track");
                 myStream.addTrack(track);
               };
             };

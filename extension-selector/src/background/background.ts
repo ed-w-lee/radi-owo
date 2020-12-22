@@ -8,14 +8,15 @@
 import 'webrtc-adapter';
 import { browser, Runtime } from 'webextension-polyfill-ts';
 
-import { initHostPeerConnection, initLocalPeerConnection, WSMessageHandler } from '../lib/rtcConnection.js';
-import { WS_KEEPALIVE_MS, WS_SERVER } from '../lib/constants.js';
+import { initHostPeerConnection, initLocalPeerConnection, WSMessageHandler } from '../lib/rtcConnection';
+import { WS_KEEPALIVE_MS, WS_SERVER } from '../lib/constants';
+import { ActionResponseMessage, RoomInfoMessage, ToBackgroundMessage } from '../lib/types';
 
 type RoomManager = {
   currentRoom: string,
   ws: WebSocket,
   handlers: Map<string, WSMessageHandler>,
-  listener_conns: RTCPeerConnection[],
+  listenerConns: Map<string, RTCPeerConnection>,
 };
 
 type MediaStreamManager = {
@@ -41,20 +42,24 @@ const addConnection = async (manager: MediaStreamManager, port: Runtime.Port) =>
       manager.mediaStream.addTrack(track);
       if (manager.roomManage) {
         // add track for existing listeners
-        manager.roomManage.listener_conns.forEach(conn => {
+        manager.roomManage.listenerConns.forEach((conn) => {
           conn.addTrack(track);
         });
       }
     };
   };
-  pc.oniceconnectionstatechange = () => {
-    if (['failed', 'disconnected', 'closed'].includes(pc.iceConnectionState)) {
-      console.log('[background] track disconnected');
+  pc.onconnectionstatechange = () => {
+    if (['closed'].includes(pc.connectionState)) {
+      console.log('[background] input closed');
     }
   };
 };
 
-const createRoomManager = (myStream: MediaStream, currentRoom: string, authToken: string): RoomManager => {
+const createRoomManager = (
+  myStream: MediaStream,
+  currentRoom: string,
+  authToken: string,
+): RoomManager => {
   const uri = `${WS_SERVER}/rooms`
     + `/${encodeURIComponent(currentRoom)}`
     + `/host?token=${encodeURIComponent(authToken)}`;
@@ -74,11 +79,11 @@ const createRoomManager = (myStream: MediaStream, currentRoom: string, authToken
       }));
     }
     setTimeout(keepalive, WS_KEEPALIVE_MS);
-  }
+  };
   keepalive();
 
-  const handlers = new Map;
-  let listener_conns: RTCPeerConnection[] = [];
+  const handlers = new Map();
+  const listenerConns: Map<string, RTCPeerConnection> = new Map();
   ws.onmessage = ({ data }) => {
     console.log('[host] received websocket message', data);
     const { from, msg } = JSON.parse(data);
@@ -92,22 +97,30 @@ const createRoomManager = (myStream: MediaStream, currentRoom: string, authToken
       // new listener, create a new connection to that listener
       console.log('new listener');
       const pc = initHostPeerConnection(handlers, ws, from);
-      myStream.getAudioTracks().forEach(track => {
+      myStream.getAudioTracks().forEach((track) => {
         pc.addTrack(track);
       });
-      listener_conns.push(pc);
+      pc.onconnectionstatechange = () => {
+        if (['closed'].includes(pc.connectionState)) {
+          console.log('[host] connection closed');
+          handlers.delete(from);
+          listenerConns.delete(from);
+        }
+      };
+      listenerConns.set(from, pc);
     }
-  }
+  };
 
   return {
     currentRoom,
     ws,
     handlers,
-    listener_conns,
+    listenerConns,
   };
-}
+};
 
-const initialize = (manager: MediaStreamManager) => {
+const initialize = (managerParam: MediaStreamManager) => {
+  const manager = managerParam;
   createAudioElement(manager.mediaStream);
   browser.runtime.onConnect.addListener((port) => {
     console.log('[background] found connection attempt', port);
@@ -125,7 +138,11 @@ const initialize = (manager: MediaStreamManager) => {
         if (message.command === 'start-room') {
           let success = false;
           if (manager.roomManage === null) {
-            manager.roomManage = createRoomManager(manager.mediaStream, message.roomId, message.authToken);
+            manager.roomManage = createRoomManager(
+              manager.mediaStream,
+              message.roomId,
+              message.authToken,
+            );
             success = true;
           }
           port.postMessage({
