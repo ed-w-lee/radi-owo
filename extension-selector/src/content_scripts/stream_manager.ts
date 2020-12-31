@@ -19,6 +19,7 @@ type StreamInfo = {
   pc: RTCPeerConnection,
   stream: MediaStream,
   senders: Map<string, RTCRtpSender>,
+  vacantSenders: RTCRtpSender[],
 };
 
 declare global {
@@ -127,12 +128,16 @@ declare global {
     console.log('[content] attempting to retrieve audio tracks');
     const senders: Map<string, RTCRtpSender> = new Map();
     stream.getAudioTracks().forEach((track) => {
-      const sender = pc.addTrack(track);
+      const sender = pc.addTrack(track, stream);
       senders.set(track.id, sender);
     });
-    console.log('[content] created pc and added tracks');
+    console.log('[content] created pc and added tracks', senders);
     tabStreams.set(streamId, {
-      element, pc, stream, senders,
+      element,
+      pc,
+      stream,
+      senders,
+      vacantSenders: [],
     });
     sendStreamUpdate(streamId, getPlayStatus(element));
 
@@ -146,6 +151,8 @@ declare global {
       const sender = info.senders.get(track.id);
       if (!sender) return;
       console.log('[content] removing track from pc');
+      info.senders.delete(track.id); // track.id seems to hit a UAF or something if we delete
+      console.log('[content] modified info:', info);
       pc.removeTrack(sender);
     };
     stream.onaddtrack = ({ track }) => {
@@ -153,7 +160,8 @@ declare global {
       console.log(`[content] stream ${streamId} adding track ${track.id}`);
       const info = tabStreams.get(streamId);
       if (!info) return;
-      const sender = info.pc.addTrack(track);
+      console.log('[content] adding track to sender');
+      const sender = info.pc.addTrack(track, stream);
       info.senders.set(track.id, sender);
     };
   };
@@ -164,12 +172,10 @@ declare global {
     if (!value) {
       return;
     }
-    const { pc, senders } = value;
-    senders.forEach((sender) => {
-      console.log('[content] removing sender', sender);
-      pc.removeTrack(sender);
-    });
+    const { pc, stream } = value;
     pc.close();
+    stream.onremovetrack = null;
+    stream.onaddtrack = null;
     tabStreams.delete(streamId);
     sendStreams();
   };

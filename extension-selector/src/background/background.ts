@@ -12,12 +12,17 @@ import { initHostPeerConnection, initLocalPeerConnection, WSMessageHandler } fro
 import { settings } from '../lib/settings';
 import { ActionResponseMessage, RoomInfoMessage, ToBackgroundMessage } from '../lib/types';
 
+type ListenerConnInfo = {
+  connection: RTCPeerConnection,
+  senders: Map<string, RTCRtpSender>,
+};
+
 type RoomManager = {
   currentRoom: string,
   ws: WebSocket,
   handlers: Map<string, WSMessageHandler>,
   // listener UUID -> [ peer connection, track ID -> sender ]
-  listenerConns: Map<string, [RTCPeerConnection, Map<string, RTCRtpSender>]>,
+  listenerConns: Map<string, ListenerConnInfo>,
 };
 
 type MediaStreamManager = {
@@ -28,6 +33,7 @@ type MediaStreamManager = {
 const createAudioElement = (myMediaStream: MediaStream) => {
   const audioElement = document.createElement('audio');
   audioElement.id = 'rolled-audio-track';
+  audioElement.autoplay = true;
   audioElement.srcObject = myMediaStream;
   document.body.appendChild(audioElement);
   audioElement.play();
@@ -35,29 +41,42 @@ const createAudioElement = (myMediaStream: MediaStream) => {
 
 const addConnection = async (manager: MediaStreamManager, port: Runtime.Port) => {
   let pc: RTCPeerConnection | null = initLocalPeerConnection(port, true);
+
+  const onRemoveTrack = ({ track }: { track: MediaStreamTrack }) => {
+    console.log('[background] stream removing track', track.id);
+    manager.mediaStream.removeTrack(track);
+    if (manager.roomManage) {
+      manager.roomManage.listenerConns.forEach(({ connection, senders }, listener) => {
+        const sender = senders.get(track.id);
+        if (!sender) return;
+        console.log('[background] removing track from listener connection', listener);
+        senders.delete(track.id);
+        connection.removeTrack(sender);
+      });
+    }
+  };
+
   pc.ontrack = (trackEv) => {
     console.log('[background] ontrack event fired', trackEv);
-    const { track } = trackEv;
+    const { track, streams: [stream] } = trackEv;
     track.onunmute = () => {
       console.log('[background] unmuted track', track.id);
       manager.mediaStream.addTrack(track);
       if (manager.roomManage) {
         // add track for existing listeners
-        manager.roomManage.listenerConns.forEach((conn) => {
-          const rtcSender = conn[0].addTrack(track, manager.mediaStream);
-          conn[1].set(track.id, rtcSender);
+        manager.roomManage.listenerConns.forEach(({ connection, senders }) => {
+          const rtcSender = connection.addTrack(track, manager.mediaStream);
+          senders.set(track.id, rtcSender);
         });
       }
     };
-    track.onended = () => {
-      console.log(`[background] track ${track.id} ended`);
-    };
+    stream.onremovetrack = onRemoveTrack;
   };
   pc.onconnectionstatechange = () => {
     if (pc && ['failed', 'closed'].includes(pc.connectionState)) {
       console.log('[background] input closed');
       pc.getReceivers().forEach((receiver) => {
-        manager.mediaStream.removeTrack(receiver.track);
+        onRemoveTrack(receiver);
       });
       pc = null;
     }
@@ -95,21 +114,23 @@ const createRoomManager = (
   keepalive();
 
   const handlers = new Map();
-  const listenerConns: Map<string, [RTCPeerConnection, Map<string, RTCRtpSender>]> = new Map();
+  const listenerConns: Map<string, ListenerConnInfo> = new Map();
+  const senders: Map<string, RTCRtpSender> = new Map();
   ws.onmessage = ({ data }) => {
-    console.log('[host] received websocket message', data);
+    console.debug('[host] received websocket message', data);
     const { from, msg } = JSON.parse(data);
     const handler = handlers.get(from);
     if (handler) {
       // old listener, there's a handler for that
-      console.log('[host] handling message', JSON.parse(msg));
+      console.debug('[host] handling message', JSON.parse(msg));
       handler(JSON.parse(msg));
     } else {
       // new listener, create a new connection to that listener
       console.log('[host] new listener', from);
       const pc = initHostPeerConnection(handlers, ws, from);
       myStream.getAudioTracks().forEach((track) => {
-        pc.addTrack(track, myStream);
+        const sender = pc.addTrack(track, myStream);
+        senders.set(track.id, sender);
       });
       const cleanupListener = () => {
         handlers.delete(from);
@@ -127,7 +148,10 @@ const createRoomManager = (
           cleanupListener();
         }
       };
-      listenerConns.set(from, [pc, new Map()]);
+      listenerConns.set(from, {
+        connection: pc,
+        senders,
+      });
     }
   };
 
@@ -174,8 +198,8 @@ const initialize = (managerParam: MediaStreamManager) => {
           allTracks.forEach((track) => {
             manager.mediaStream.removeTrack(track);
           });
-          manager.roomManage?.listenerConns.forEach(([conn]) => {
-            conn.close();
+          manager.roomManage?.listenerConns.forEach(({ connection }) => {
+            connection.close();
           });
           manager.roomManage?.ws.close();
           manager.roomManage = null;
