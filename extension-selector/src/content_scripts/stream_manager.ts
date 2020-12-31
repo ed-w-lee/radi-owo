@@ -166,6 +166,16 @@ declare global {
     };
   };
 
+  // When mozCaptureStream is called, audio stops getting output from that
+  // element, just refresh to fix it for now. we can use a
+  // MediaElementAudioSourceNode for a better fix, but not going there right now
+  // see: https://bugzilla.mozilla.org/show_bug.cgi?id=1573031
+  const refreshFirefox = () => {
+    if (navigator.userAgent.indexOf('Firefox') > 0) {
+      window.location.reload();
+    }
+  };
+
   const deleteStream = async (streamId: number) => {
     console.log('[content] deleting stream', streamId);
     const value = tabStreams.get(streamId);
@@ -178,12 +188,16 @@ declare global {
     stream.onaddtrack = null;
     tabStreams.delete(streamId);
     sendStreams();
+
+    refreshFirefox();
   };
 
   const deleteAll = () => {
     console.log('[content] deleting all');
     Array.from(tabStreams.keys()).forEach(deleteStream);
     sendStreams();
+
+    refreshFirefox();
   };
 
   const messageHandler = (message: ToContentMessage) => {
