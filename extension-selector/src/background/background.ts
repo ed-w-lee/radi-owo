@@ -9,14 +9,15 @@ import 'webrtc-adapter';
 import { browser, Runtime } from 'webextension-polyfill-ts';
 
 import { initHostPeerConnection, initLocalPeerConnection, WSMessageHandler } from '../lib/rtcConnection';
-import { WS_KEEPALIVE_MS, WS_SERVER } from '../lib/constants';
+import { settings } from '../lib/settings';
 import { ActionResponseMessage, RoomInfoMessage, ToBackgroundMessage } from '../lib/types';
 
 type RoomManager = {
   currentRoom: string,
   ws: WebSocket,
   handlers: Map<string, WSMessageHandler>,
-  listenerConns: Map<string, RTCPeerConnection>,
+  // listener UUID -> [ peer connection, track ID -> sender ]
+  listenerConns: Map<string, [RTCPeerConnection, Map<string, RTCRtpSender>]>,
 };
 
 type MediaStreamManager = {
@@ -35,15 +36,16 @@ const createAudioElement = (myMediaStream: MediaStream) => {
 const addConnection = async (manager: MediaStreamManager, port: Runtime.Port) => {
   const pc = initLocalPeerConnection(port, true);
   pc.ontrack = (trackEv) => {
-    console.log('[background] ontrack event', trackEv);
+    console.log('[background] ontrack event fired');
     const { track } = trackEv;
     track.onunmute = () => {
-      console.log('[background] unmuted track');
+      console.log('[background] unmuted track', track.id);
       manager.mediaStream.addTrack(track);
       if (manager.roomManage) {
         // add track for existing listeners
         manager.roomManage.listenerConns.forEach((conn) => {
-          conn.addTrack(track);
+          const rtcSender = conn[0].addTrack(track, manager.mediaStream);
+          conn[1].set(track.id, rtcSender);
         });
       }
     };
@@ -60,7 +62,7 @@ const createRoomManager = (
   currentRoom: string,
   authToken: string,
 ): RoomManager => {
-  const uri = `${WS_SERVER}/rooms`
+  const uri = `${settings.WS_SERVER}/rooms`
     + `/${encodeURIComponent(currentRoom)}`
     + `/host?token=${encodeURIComponent(authToken)}`;
   const ws = new WebSocket(uri);
@@ -68,46 +70,57 @@ const createRoomManager = (
   // make sure host connection stays alive
   const keepalive = () => {
     if (!ws) {
-      console.error('ws not alive anymore');
+      console.error('[background] ws not alive anymore');
       return;
     }
-    if (ws.readyState === WebSocket.CLOSED) return;
+    if (ws.readyState === WebSocket.CLOSED) {
+      console.log('[background] ws closed, stopping keepalive');
+      return;
+    }
     if (ws.readyState === WebSocket.OPEN) {
-      console.log('sending keepalive');
+      console.log('[background] sending keepalive');
       ws.send(JSON.stringify({
         type: 'KeepAlive',
       }));
     }
-    setTimeout(keepalive, WS_KEEPALIVE_MS);
+    setTimeout(keepalive, settings.WS_KEEPALIVE_MS);
   };
   keepalive();
 
   const handlers = new Map();
-  const listenerConns: Map<string, RTCPeerConnection> = new Map();
+  const listenerConns: Map<string, [RTCPeerConnection, Map<string, RTCRtpSender>]> = new Map();
   ws.onmessage = ({ data }) => {
     console.log('[host] received websocket message', data);
     const { from, msg } = JSON.parse(data);
-    console.log(handlers);
     const handler = handlers.get(from);
     if (handler) {
       // old listener, there's a handler for that
-      console.log('handling message', JSON.parse(msg));
+      console.log('[host] handling message', JSON.parse(msg));
       handler(JSON.parse(msg));
     } else {
       // new listener, create a new connection to that listener
-      console.log('new listener');
+      console.log('[host] new listener', from);
       const pc = initHostPeerConnection(handlers, ws, from);
       myStream.getAudioTracks().forEach((track) => {
-        pc.addTrack(track);
+        pc.addTrack(track, myStream);
       });
+      const cleanupListener = () => {
+        handlers.delete(from);
+        listenerConns.delete(from);
+      };
       pc.onconnectionstatechange = () => {
         if (['closed'].includes(pc.connectionState)) {
           console.log('[host] connection closed');
-          handlers.delete(from);
-          listenerConns.delete(from);
+          cleanupListener();
         }
       };
-      listenerConns.set(from, pc);
+      pc.oniceconnectionstatechange = () => {
+        if (['closed', 'failed', 'completed'].includes(pc.iceConnectionState)) {
+          console.log('[host] ice connection', pc.iceConnectionState);
+          cleanupListener();
+        }
+      };
+      listenerConns.set(from, [pc, new Map()]);
     }
   };
 
@@ -151,7 +164,13 @@ const initialize = (managerParam: MediaStreamManager) => {
           } as ActionResponseMessage);
         } else if (message.command === 'stop-room') {
           const allTracks = manager.mediaStream.getAudioTracks();
-          allTracks.forEach(manager.mediaStream.removeTrack);
+          allTracks.forEach((track) => {
+            manager.mediaStream.removeTrack(track);
+          });
+          manager.roomManage?.listenerConns.forEach(([conn]) => {
+            conn.close();
+          });
+          manager.roomManage?.ws.close();
           manager.roomManage = null;
           port.postMessage({
             description: 'action-response',

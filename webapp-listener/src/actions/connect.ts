@@ -1,4 +1,4 @@
-import { WEBSOCKET_URL } from '../settings';
+import { settings } from '../settings';
 import 'webrtc-adapter';
 
 const config = {
@@ -72,8 +72,8 @@ export function initPeerConnection(wsParam: WebSocket) {
   };
 
   pc.onconnectionstatechange = () => {
-    if (['connected', 'closed', 'failed'].includes(pc.connectionState)) {
-      console.log('peer connection state', pc.connectionState);
+    if (['closed'].includes(pc.connectionState)) {
+      console.log('peer connection closed');
       ws.close();
     }
   }
@@ -84,7 +84,7 @@ export function initPeerConnection(wsParam: WebSocket) {
 }
 
 export default function startListenConnection(roomId: string): Promise<RTCPeerConnection> {
-  const ws = new WebSocket(`${WEBSOCKET_URL}/rooms/${roomId}/listen`);
+  const ws = new WebSocket(`${settings.WS_SERVER}/rooms/${roomId}/listen`);
   return new Promise((res, rej) => {
     ws.onopen = () => {
       const pc = initPeerConnection(ws);

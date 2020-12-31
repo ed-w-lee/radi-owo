@@ -1,9 +1,8 @@
-import { browser } from 'webextension-polyfill-ts';
 import { initLoginPage, renderLoginPage } from './components/login';
 import { attemptGetRooms, renderRoomsList } from './components/roomlist';
 import { getStorageState } from './storage';
 import { SetStateFn, State, StateManager } from './state';
-import { renderRoomManager } from './components/roommanage';
+import renderRoomManager from './components/roommanage';
 
 const StateHandler = (state: State, setState: SetStateFn) => {
   if (state.authToken && state.user) {
@@ -30,11 +29,6 @@ const initialize = async () => {
 };
 
 (() => {
-  console.log('[popup] executing script');
-
-  browser.tabs.executeScript({
-    file: '/src/content_scripts/build_content.js',
-  })
-    .catch((e) => console.log('[popup] there was some error in executing', e))
-    .then(() => initialize());
+  console.log('[popup] initializing');
+  initialize();
 })();

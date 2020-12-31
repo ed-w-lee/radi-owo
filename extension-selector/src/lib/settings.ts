@@ -1,18 +1,17 @@
 export type Settings = {
   API_SERVER: string,
   WS_SERVER: string,
+  WS_KEEPALIVE_MS: number,
 };
 
 let mySettings: Settings;
 
-// replaced with correct environment in Rollup
-declare const __MYENV__;
-
-switch (__MYENV__) {
+switch (process.env.ENV) {
   case 'production': {
     mySettings = {
       API_SERVER: 'http://TODO',
       WS_SERVER: 'ws://TODO',
+      WS_KEEPALIVE_MS: 10000,
     };
     break;
   }
@@ -20,13 +19,15 @@ switch (__MYENV__) {
     mySettings = {
       API_SERVER: 'http://localhost:3030',
       WS_SERVER: 'ws://localhost:3030',
+      WS_KEEPALIVE_MS: 10000,
     };
     break;
   }
   case 'remotedev': {
     mySettings = {
-      API_SERVER: '/api',
+      API_SERVER: 'http://192.168.1.128:58008/api',
       WS_SERVER: 'ws://192.168.1.128:58008/ws',
+      WS_KEEPALIVE_MS: 10000,
     };
     break;
   }

@@ -7,14 +7,18 @@
 import 'webrtc-adapter';
 import { browser } from 'webextension-polyfill-ts';
 
-import { initLocalPeerConnection } from '../lib/rtcConnection.js';
-import captureStream from '../lib/polyfill.js';
-import generateId from '../lib/lib.js';
+import { initLocalPeerConnection } from '../lib/rtcConnection';
+import captureStream from '../lib/polyfill';
+import generateId from '../lib/lib';
+import {
+  AllStatusesMessage, PlayStatus, StatusUpdateMessage, ToContentMessage,
+} from '../lib/types';
 
 type StreamInfo = {
   element: HTMLMediaElement,
   pc: RTCPeerConnection,
   stream: MediaStream,
+  senders: Map<string, RTCRtpSender>,
 };
 
 declare global {
@@ -82,36 +86,33 @@ declare global {
     });
   };
 
-  const getPlayStatus = (el: HTMLMediaElement): PlayStatus => {
-    return el.paused ? 'paused' : 'playing';
-  };
+  const getPlayStatus = (el: HTMLMediaElement): PlayStatus => (el.paused ? 'paused' : 'playing');
 
   const sendStreamUpdate = (streamId: number, status: PlayStatus) => {
     console.log('[content] send update', streamId, status);
     browser.runtime.sendMessage(undefined, {
       description: 'status-update',
-      streamId: streamId,
-      status: status,
+      streamId,
+      status,
     } as StatusUpdateMessage)
-      .catch(e => console.error(e));
+      .catch((e) => console.error(e));
   };
 
   const sendStreams = () => {
-    const tabStatuses: [number, PlayStatus][] = Array.from(tabStreams.entries()).map(([k, v]) =>
-      [k, getPlayStatus(v.element)]
-    );
+    const tabStatuses: [number, PlayStatus][] = Array.from(tabStreams.entries())
+      .map(([k, v]) => [k, getPlayStatus(v.element)]);
     console.log('[content] sending statuses', tabStatuses);
     browser.runtime.sendMessage(undefined, {
       description: 'status-all',
       statuses: tabStatuses,
     } as AllStatusesMessage)
-      .catch(e => console.error(e));
+      .catch((e) => console.error(e));
   };
 
   const addStream = async (streamId: number) => {
     const element = await chooseStream();
 
-    let stream = captureStream(element);
+    const stream = captureStream(element);
 
     console.log('[content] attempting to connect to port');
     const port = browser.runtime.connect(undefined, {
@@ -120,11 +121,15 @@ declare global {
     console.log('[content] connected to port', port);
     const pc = initLocalPeerConnection(port, false);
     console.log('[content] attempting to retrieve audio tracks', port, stream.getAudioTracks());
+    const senders: Map<string, RTCRtpSender> = new Map();
     stream.getAudioTracks().forEach((track) => {
-      pc.addTrack(track);
+      const sender = pc.addTrack(track, stream);
+      senders.set(track.id, sender);
     });
     console.log('[content] created pc and added tracks');
-    tabStreams.set(streamId, { element, pc, stream });
+    tabStreams.set(streamId, {
+      element, pc, stream, senders,
+    });
     sendStreamUpdate(streamId, getPlayStatus(element));
   };
 
@@ -134,10 +139,12 @@ declare global {
     if (!value) {
       return;
     }
-    const { pc, stream } = value;
-    console.log(pc, stream);
+    const { pc, senders } = value;
+    senders.forEach((sender) => {
+      console.log('[content] removing sender', sender);
+      pc.removeTrack(sender);
+    });
     pc.close();
-    console.log(stream.getAudioTracks());
     tabStreams.delete(streamId);
     sendStreams();
   };

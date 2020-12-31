@@ -2,12 +2,17 @@ import svelte from 'rollup-plugin-svelte';
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
+import replace from '@rollup/plugin-replace';
 import { terser } from 'rollup-plugin-terser';
 import sveltePreprocess from 'svelte-preprocess';
 import typescript from '@rollup/plugin-typescript';
 import css from 'rollup-plugin-css-only';
 
-const production = !process.env.ROLLUP_WATCH;
+const env = process.env.BUILD;
+if (env === undefined) {
+  throw new Error('failed to find BUILD environment');
+}
+const production = env === 'production';
 
 function serve() {
   let server;
@@ -56,6 +61,9 @@ export default {
     // some cases you'll need additional configuration -
     // consult the documentation for details:
     // https://github.com/rollup/plugins/tree/master/packages/commonjs
+    replace({
+      __MYENV__: `'${env}'`,
+    }),
     resolve({
       browser: true,
       dedupe: ['svelte'],

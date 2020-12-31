@@ -1,6 +1,9 @@
-import { browser, Runtime } from "webextension-polyfill-ts";
-import { SetStateFn, State, StreamsStore } from "../state";
-import { bgPingPong, hideAllExcept } from "./util";
+import { browser, Runtime } from 'webextension-polyfill-ts';
+import {
+  ChooseElementMessage, FromContentMessage, GetAllMessage, StopAllMessage, StopStreamMessage,
+} from '../../lib/types';
+import { SetStateFn, State, StreamsStore } from '../state';
+import { bgPingPong, hideAllExcept } from './util';
 
 const handleChooseElement = () => {
   // we want to start the element chooser process in the current tab
@@ -33,7 +36,7 @@ const handleClearStreams = () => {
       browser.tabs.sendMessage(tab.id, {
         command: 'stop-all',
       } as StopAllMessage)
-        .catch(e => { });
+        .catch(() => { /* ignore failure to send errors */ });
     });
   });
 };
@@ -48,20 +51,17 @@ const renderStreamList = async (allStreams: StreamsStore) => {
   const elementsList = document.createElement('ul');
   const allTabs = await browser.tabs.query({});
   const tabMap = new Map(
-    allTabs.filter(tab => tab.id && tab.title)
-      .map(tab => [tab.id!, tab])
+    allTabs.filter((tab) => tab.id && tab.title)
+      .map((tab) => [tab.id!, tab]),
   );
   allStreams.forEach((tabStreams, tabId) => {
-    console.log(tabStreams);
+    console.log('[popup] rendering tabStreams:', tabStreams);
     const tabInfo = tabMap.get(tabId);
     if (!tabInfo) {
       console.error(`[popup] unable to find info for tab ${tabId}`);
     }
     tabStreams.forEach((status, streamId) => {
-      console.log('status and streamid', status, streamId);
-      console.log('num rendered', numRendered);
       numRendered += 1;
-      console.log('num rendered after', numRendered);
       const entry = document.createElement('li');
       entry.innerText = `title: ${tabInfo?.title}`
         + ` stream: ${streamId}`
@@ -75,51 +75,56 @@ const renderStreamList = async (allStreams: StreamsStore) => {
           streamId,
         } as StopStreamMessage)
           .catch((e) => console.log('[popup] failed to stop: ', tabId, streamId, e));
-      }
+      };
       deleteButton.addEventListener('click', deleteHandler);
       entry.appendChild(deleteButton);
       elementsList.appendChild(entry);
-    })
+    });
   });
   container.innerHTML = '';
   container.appendChild(elementsList);
 
-  console.log('num rendered final', numRendered);
   if (numRendered === 0) {
     container.innerText = 'No streams exist at this time.';
   }
-}
-
-const createMessageHandler = (allStreams: StreamsStore) => (message: FromContentMessage, sender: Runtime.MessageSender) => {
-  console.log('[popup] received message', message, sender);
-  if (!sender.tab || !sender.tab.id) return;
-
-  if (message.description === 'status-all') {
-    const tabStatuses = new Map(message.statuses);
-    console.log(tabStatuses);
-    allStreams.set(sender.tab.id, tabStatuses);
-    console.log(allStreams);
-    renderStreamList(allStreams);
-  } else if (message.description === 'status-update') {
-    const tabStatuses = allStreams[sender.tab.id] || new Map();
-    tabStatuses.set(message.streamId, message.status);
-    allStreams.set(sender.tab.id, tabStatuses);
-    renderStreamList(allStreams);
-  }
 };
 
-export const renderRoomManager = async (state: State, setState: SetStateFn) => {
+const createMessageHandler = (allStreams: StreamsStore) => (
+  (message: FromContentMessage, sender: Runtime.MessageSender) => {
+    console.log('[popup] received message', message, sender);
+    if (!sender.tab || !sender.tab.id) return;
+
+    if (message.description === 'status-all') {
+      const tabStatuses = new Map(message.statuses);
+      allStreams.set(sender.tab.id, tabStatuses);
+      renderStreamList(allStreams);
+    } else if (message.description === 'status-update') {
+      const tabStatuses = allStreams[sender.tab.id] || new Map();
+      tabStatuses.set(message.streamId, message.status);
+      allStreams.set(sender.tab.id, tabStatuses);
+      renderStreamList(allStreams);
+    }
+  }
+);
+
+export default async (state: State, setState: SetStateFn) => {
   if (!state.allRooms || !state.currentRoom) {
-    console.error("renderRoomManager FAILED DUE TO ALLROOMS OR CURRENTROOM");
+    console.error('renderRoomManager FAILED DUE TO ALLROOMS OR CURRENTROOM');
     return;
   }
+
+  console.log('[popup] running content script');
+  browser.tabs.executeScript({
+    file: '/src/content_scripts/build_content.js',
+  })
+    .catch((e) => console.log('[popup] there was some error in executing', e));
 
   hideAllExcept('room-information');
 
   // render title
-  const currentRoomInfo = state.allRooms.find(v => v.id === state.currentRoom);
+  const currentRoomInfo = state.allRooms.find((v) => v.id === state.currentRoom);
   if (!currentRoomInfo) {
-    console.error("couldn't find currently hosting room:", state.currentRoom);
+    console.error("[popup] couldn't find currently hosting room:", state.currentRoom);
     return;
   }
   const roomName = document.getElementById('hosting-room-name')!;
@@ -139,7 +144,7 @@ export const renderRoomManager = async (state: State, setState: SetStateFn) => {
       }
       browser.tabs.sendMessage(tab.id, {
         command: 'get-all',
-      } as GetAllMessage).catch(e => { /* ignore failure to send errors */ });
+      } as GetAllMessage).catch(() => { /* ignore failure to send errors */ });
     });
   });
 

@@ -10,7 +10,8 @@
 		"activeTab",
 		"tabs",
 		"storage",
-		"*://localhost/*"
+		"*://localhost/*",
+		"*://192.168.1.128/*"
 	],
 	"browser_action": {
 		"default_icon": {

@@ -11,6 +11,7 @@ mod routes;
 mod schema;
 mod settings;
 
+use settings::get_allowed_origins;
 use std::env;
 use warp::Filter;
 
@@ -22,9 +23,12 @@ async fn main() {
 
     let db_url = env::var("DATABASE_URL").expect("Unable to find DATABASE_URL");
     let pool = db::pg_pool(db_url);
+    debug!("allowed origins: {:?}", get_allowed_origins());
+    let cors = warp::cors().allow_origins(get_allowed_origins());
 
     let routes = routes(pool)
         .with(warp::log("server::routes"))
+        .with(cors)
         .recover(errors::handle_error);
 
     info!("Start the server");

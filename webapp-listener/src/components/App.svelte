@@ -1,7 +1,5 @@
 <script lang="ts">
-	import ListenForm from "./ListenForm.svelte";
-
-	export let name: string;
+	import Listener from "./Listener.svelte";
 </script>
 
 <style>
@@ -32,13 +30,7 @@
 
 <body>
 	<main>
-		<h1>Hello {name}!</h1>
-		<p>
-			Visit the
-			<a href="https://svelte.dev/tutorial">Svelte tutorial</a>
-			to learn how to build Svelte apps.
-		</p>
-
-		<ListenForm />
+		<h1>RadioWo</h1>
+		<Listener />
 	</main>
 </body>

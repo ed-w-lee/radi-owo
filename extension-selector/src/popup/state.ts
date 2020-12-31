@@ -1,4 +1,5 @@
-import { RoomInfo, UserInfo } from "./net";
+import { PlayStatus } from '../lib/types';
+import { RoomInfo, UserInfo } from './net';
 
 export type StreamsStore = Map<number, Map<number, PlayStatus>>;
 
@@ -20,9 +21,9 @@ export const CLEAN_STATE: State = {
   currentRoom: undefined,
 };
 
-
 export class StateManager {
   state: State;
+
   listener?: StateChangeListener;
 
   constructor() {
@@ -41,6 +42,9 @@ export class StateManager {
   setState(newState: State) {
     this.state = { ...this.state, ...newState };
     console.debug('updated state:', this.state);
-    this.listener && this.listener(this.state, this.setState);
+    if (this.listener !== undefined) {
+      console.debug('calling listener');
+      this.listener(this.state, this.setState);
+    }
   }
 }

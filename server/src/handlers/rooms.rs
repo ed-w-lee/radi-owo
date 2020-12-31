@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use diesel::{dsl::any, insert_into, prelude::*};
+use diesel::{delete, dsl::any, insert_into, prelude::*};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use warp::{
@@ -123,6 +123,29 @@ pub async fn create_room(
     match res {
         Err(e) => Err(reject::custom(e)),
         Ok(room) => Ok(with_status(json(&room), StatusCode::CREATED)),
+    }
+}
+
+pub async fn delete_room(
+    room_to_delete: Uuid,
+    pool: PgPool,
+    req_user_id: Uuid,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let res = db_txn(pool, false, |db| {
+        let room_result: Room = rooms.find(room_to_delete).first(db)?;
+        if room_result.user_id != req_user_id {
+            return Err(MyError::AuthError(
+                "Unable to delete: room is not owned by user".to_owned(),
+            ));
+        }
+        delete(rooms.find(room_to_delete)).execute(db)?;
+        Ok(())
+    })
+    .await;
+
+    match res {
+        Err(e) => Err(reject::custom(e)),
+        Ok(_) => Ok(StatusCode::NO_CONTENT),
     }
 }
 

@@ -1,5 +1,5 @@
-import { browser } from "webextension-polyfill-ts";
-import { CLEAN_STATE, State, StateManager } from "./state";
+import { browser } from 'webextension-polyfill-ts';
+import { CLEAN_STATE, State, StateManager } from './state';
 
 const stateKeys = [
   'authToken',
@@ -7,9 +7,10 @@ const stateKeys = [
 ];
 
 export const getStorageState = async (manager: StateManager): Promise<void> => {
-  let storageState = await browser.storage.local.get(stateKeys) as State;
+  const storageState = await browser.storage.local.get(stateKeys) as State;
+  console.debug('storage state', storageState);
   manager.setState({ ...CLEAN_STATE, ...storageState });
-}
+};
 
 export const setStorageState = async (state: State) => {
   const toSet = {
@@ -18,4 +19,4 @@ export const setStorageState = async (state: State) => {
   };
 
   await browser.storage.local.set(toSet);
-}
+};

@@ -14,7 +14,9 @@ use crate::{
 pub fn routes(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let rooms = rooms_get(pool.clone()).or(rooms_post(pool.clone()));
+    let rooms = rooms_get(pool.clone())
+        .or(rooms_post(pool.clone()))
+        .or(rooms_delete(pool.clone()));
 
     let host_conns = HostConnections::default();
     let listen_conns = ListenConnections::default();
@@ -22,11 +24,13 @@ pub fn routes(
         rooms_listen_ws(pool.clone(), host_conns.clone(), listen_conns.clone()),
     );
 
-    let users = users_post(pool.clone()).or(user_rooms_get(pool.clone()));
+    let room_routes = warp::path("rooms").and(room_conns.or(rooms));
 
-    let my_routes = my_rooms_get(pool.clone()).or(my_sessions_post(pool.clone()));
+    let users = warp::path("users").and(users_post(pool.clone()).or(user_rooms_get(pool.clone())));
+    let my_routes =
+        warp::path("my").and(my_rooms_get(pool.clone()).or(my_sessions_post(pool.clone())));
 
-    let routes = rooms.or(room_conns).or(users).or(my_routes);
+    let routes = room_routes.or(users).or(my_routes);
     routes
 }
 
@@ -34,8 +38,7 @@ pub fn routes(
 pub fn users_post(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("users")
-        .and(warp::post())
+    warp::post()
         .and(json_body::<UserCreateReq>())
         .and(with_db(pool))
         .and_then(create_user)
@@ -45,7 +48,7 @@ pub fn users_post(
 pub fn user_rooms_get(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("users" / Uuid / "rooms")
+    warp::path!(Uuid / "rooms")
         .and(warp::get())
         .and(with_db(pool))
         .and_then(list_rooms_for_user)
@@ -55,7 +58,7 @@ pub fn user_rooms_get(
 pub fn my_rooms_get(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("my" / "rooms")
+    warp::path!("rooms")
         .and(warp::get())
         .and(for_authorized())
         .and(with_db(pool))
@@ -66,7 +69,7 @@ pub fn my_rooms_get(
 pub fn my_sessions_post(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("my" / "sessions")
+    warp::path!("sessions")
         .and(warp::post())
         .and(json_body::<UserLoginReq>())
         .and(with_db(pool))
@@ -77,8 +80,7 @@ pub fn my_sessions_post(
 pub fn rooms_get(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("rooms")
-        .and(warp::get())
+    warp::get()
         .and(warp::query::<ListOptions>())
         .and(with_db(pool))
         .and_then(list_rooms)
@@ -88,12 +90,22 @@ pub fn rooms_get(
 pub fn rooms_post(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("rooms")
-        .and(warp::post())
+    warp::post()
         .and(with_db(pool))
         .and(for_authorized())
         .and(json_body::<RoomCreateReq>())
         .and_then(create_room)
+}
+
+// DELETE /rooms/<ID>
+pub fn rooms_delete(
+    pool: PgPool,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!(Uuid)
+        .and(warp::delete())
+        .and(with_db(pool))
+        .and(for_authorized())
+        .and_then(delete_room)
 }
 
 // WS /rooms/<ID>/host?token=<TOKEN>
@@ -102,7 +114,7 @@ pub fn rooms_host_ws(
     host_conns: HostConnections,
     listen_conns: ListenConnections,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("rooms" / Uuid / "host")
+    warp::path!(Uuid / "host")
         .and(for_authorized_ws())
         .and(warp::ws())
         .and(with_db(pool))
@@ -116,7 +128,7 @@ pub fn rooms_listen_ws(
     host_conns: HostConnections,
     listen_conns: ListenConnections,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("rooms" / Uuid / "listen")
+    warp::path!(Uuid / "listen")
         .and(warp::ws())
         .and(with_db(pool))
         .and(with_conns(host_conns, listen_conns))

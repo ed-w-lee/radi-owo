@@ -11,13 +11,18 @@ const commonOutput = {
 };
 
 const env = process.env.BUILD;
+if (env === undefined) {
+  throw Error('undefined build environment');
+}
 
 const commonExternal = {
   plugins: [
+    replace({
+      'process.env.ENV': `'${env}'`,
+    }),
     nodeResolve(),
     commonjs(),
     typescript(),
-    replace(),
   ],
 };
 
