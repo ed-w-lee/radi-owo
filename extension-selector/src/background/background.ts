@@ -34,9 +34,9 @@ const createAudioElement = (myMediaStream: MediaStream) => {
 };
 
 const addConnection = async (manager: MediaStreamManager, port: Runtime.Port) => {
-  const pc = initLocalPeerConnection(port, true);
+  let pc: RTCPeerConnection | null = initLocalPeerConnection(port, true);
   pc.ontrack = (trackEv) => {
-    console.log('[background] ontrack event fired');
+    console.log('[background] ontrack event fired', trackEv);
     const { track } = trackEv;
     track.onunmute = () => {
       console.log('[background] unmuted track', track.id);
@@ -49,10 +49,17 @@ const addConnection = async (manager: MediaStreamManager, port: Runtime.Port) =>
         });
       }
     };
+    track.onended = () => {
+      console.log(`[background] track ${track.id} ended`);
+    };
   };
   pc.onconnectionstatechange = () => {
-    if (['closed'].includes(pc.connectionState)) {
+    if (pc && ['failed', 'closed'].includes(pc.connectionState)) {
       console.log('[background] input closed');
+      pc.getReceivers().forEach((receiver) => {
+        manager.mediaStream.removeTrack(receiver.track);
+      });
+      pc = null;
     }
   };
 };

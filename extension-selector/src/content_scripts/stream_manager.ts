@@ -109,8 +109,12 @@ declare global {
       .catch((e) => console.error(e));
   };
 
+  let isChoosing = false;
   const addStream = async (streamId: number) => {
+    if (isChoosing) return;
+    isChoosing = true;
     const element = await chooseStream();
+    isChoosing = false;
 
     const stream = captureStream(element);
 
@@ -120,10 +124,10 @@ declare global {
     });
     console.log('[content] connected to port', port);
     const pc = initLocalPeerConnection(port, false);
-    console.log('[content] attempting to retrieve audio tracks', port, stream.getAudioTracks());
+    console.log('[content] attempting to retrieve audio tracks');
     const senders: Map<string, RTCRtpSender> = new Map();
     stream.getAudioTracks().forEach((track) => {
-      const sender = pc.addTrack(track, stream);
+      const sender = pc.addTrack(track);
       senders.set(track.id, sender);
     });
     console.log('[content] created pc and added tracks');
@@ -131,6 +135,27 @@ declare global {
       element, pc, stream, senders,
     });
     sendStreamUpdate(streamId, getPlayStatus(element));
+
+    // if the stream modifies its tracks, we should update the peer connection as well
+    stream.onremovetrack = ({ track }) => {
+      if (track.kind !== 'audio') return;
+      console.log(`[content] stream ${streamId} removing track ${track.id}`);
+      const info = tabStreams.get(streamId);
+      if (!info) return;
+      console.log('[content] identifying sender');
+      const sender = info.senders.get(track.id);
+      if (!sender) return;
+      console.log('[content] removing track from pc');
+      pc.removeTrack(sender);
+    };
+    stream.onaddtrack = ({ track }) => {
+      if (track.kind !== 'audio') return;
+      console.log(`[content] stream ${streamId} adding track ${track.id}`);
+      const info = tabStreams.get(streamId);
+      if (!info) return;
+      const sender = info.pc.addTrack(track);
+      info.senders.set(track.id, sender);
+    };
   };
 
   const deleteStream = async (streamId: number) => {
