@@ -39,7 +39,7 @@ export function initPeerConnection(wsParam: WebSocket) {
 
   let ignoreOffer = false;
   ws.onmessage = async ({ data }) => {
-    console.log('received message with data', data);
+    console.debug('received message with data', data);
     const { description, candidate } = JSON.parse(data);
     try {
       console.debug('received message with', description, candidate);

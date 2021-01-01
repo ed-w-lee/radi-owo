@@ -3,11 +3,9 @@
 
   const srcObject = (node: HTMLAudioElement, connection: RTCPeerConnection) => {
     let currConn: RTCPeerConnection = connection;
-    let isPlaying: boolean = false;
     node.srcObject = null;
 
     const setMyStream = (newConn: RTCPeerConnection) => {
-      isPlaying = false;
       newConn.ontrack = ({ track, streams: [stream] }) => {
         console.log("unmuted stream", stream);
         track.onunmute = () => {
@@ -15,10 +13,9 @@
           if (!node.srcObject) {
             node.srcObject = stream;
           }
-          if (!isPlaying) {
-            node.play();
-            isPlaying = true;
-          }
+          // stupid hack for some weird Chrome issue when removing and adding tracks
+          node.pause();
+          node.play();
         };
       };
     };
@@ -42,6 +39,6 @@
   };
 </script>
 
-<audio use:srcObject={connection} controls>
+<audio use:srcObject={connection} controls autoplay>
   <track kind="captions" />
 </audio>
