@@ -40,14 +40,12 @@ impl From<User> for UserQueryResult {
     }
 }
 
-// The query parameters for list_todos.
 #[derive(Debug, Identifiable, Associations, Queryable, Insertable, Serialize)]
 #[belongs_to(User)]
 pub struct Room {
     pub id: Uuid,
     pub user_id: Uuid,
     pub room_name: String,
-    pub host_status: i16,
     pub created_at: DateTime<Utc>,
     pub last_connected: Option<DateTime<Utc>>,
 }

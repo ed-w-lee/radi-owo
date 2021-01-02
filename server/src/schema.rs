@@ -3,7 +3,6 @@ table! {
         id -> Uuid,
         user_id -> Uuid,
         room_name -> Varchar,
-        host_status -> Int2,
         created_at -> Timestamptz,
         last_connected -> Nullable<Timestamptz>,
     }

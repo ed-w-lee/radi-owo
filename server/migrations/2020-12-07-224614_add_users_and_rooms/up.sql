@@ -15,7 +15,6 @@ CREATE TABLE rooms (
   id             uuid         NOT NULL,
   user_id        uuid         NOT NULL,
   room_name      VARCHAR(255) NOT NULL,
-  host_status    SMALLINT     NOT NULL,
   created_at     TIMESTAMPTZ  NOT NULL,
   last_connected TIMESTAMPTZ,
   PRIMARY KEY(id),

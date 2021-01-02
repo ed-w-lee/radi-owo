@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use diesel::{delete, dsl::any, insert_into, prelude::*};
-use serde::{Deserialize, Serialize};
+use futures::stream::{self, StreamExt};
+use serde::{Deserialize, Serialize, Serializer};
 use uuid::Uuid;
 use warp::{
     hyper::StatusCode,
@@ -10,19 +11,54 @@ use warp::{
 
 use std::{cmp::min, collections::HashMap};
 
+use crate::schema;
 use crate::schema::{rooms::dsl::*, users::dsl::*};
-use crate::{db::HostStatus, schema};
 use crate::{
     db::{PgPool, Room},
     errors::MyError,
 };
 
-use super::util::db_txn;
+use super::{util::db_txn, HostConnections};
 
 #[derive(Debug, Deserialize)]
 pub struct ListOptions {
     pub offset: Option<u8>,
     pub limit: Option<u8>,
+}
+
+#[derive(Debug)]
+#[repr(i16)]
+pub enum HostStatus {
+    Unknown = 0,
+    Stopped = 1,
+    Playing = 2,
+}
+
+impl Serialize for HostStatus {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(match self {
+            HostStatus::Unknown => "unknown",
+            HostStatus::Playing => "playing",
+            HostStatus::Stopped => "stopped",
+        })
+    }
+}
+
+impl From<i16> for HostStatus {
+    fn from(i: i16) -> Self {
+        match i {
+            x if x == HostStatus::Unknown as i16 => HostStatus::Unknown,
+            x if x == HostStatus::Playing as i16 => HostStatus::Playing,
+            x if x == HostStatus::Stopped as i16 => HostStatus::Stopped,
+            x => {
+                error!("attempting to convert invalid i16 to HostStatus: {}", x);
+                HostStatus::Unknown
+            }
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,9 +84,18 @@ pub struct UserDisplayName {
 
 const ROOM_LIMIT_MAX: u8 = 100;
 
+pub async fn get_host_status(host_conns: &HostConnections, room: &Uuid) -> HostStatus {
+    if host_conns.read().await.contains_key(room) {
+        HostStatus::Playing
+    } else {
+        HostStatus::Stopped
+    }
+}
+
 pub async fn list_rooms(
     opts: ListOptions,
     pool: PgPool,
+    host_conns: HostConnections,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let offset_or_zero = opts.offset.unwrap_or(0);
     let limit = min(opts.limit.unwrap_or(ROOM_LIMIT_MAX), ROOM_LIMIT_MAX);
@@ -78,19 +123,22 @@ pub async fn list_rooms(
                 .into_iter()
                 .map(|u| (u.id, u.display_name))
                 .collect();
-            let response: Vec<RoomResponse> = found_rooms
-                .into_iter()
-                .map(|room| RoomResponse {
-                    id: room.id,
-                    host_name: id_to_name
-                        .get(&room.user_id)
-                        .map_or(None, |name| Some(name.clone())),
-                    name: room.room_name,
-                    host_status: HostStatus::from(room.host_status),
-                    created_at: room.created_at,
-                    last_connected: room.last_connected,
+            let response: Vec<RoomResponse> = stream::iter(found_rooms.into_iter())
+                .then(|room| async {
+                    let host_status = get_host_status(&host_conns, &room.id).await;
+                    RoomResponse {
+                        id: room.id,
+                        host_name: id_to_name
+                            .get(&room.user_id)
+                            .map_or(None, |name| Some(name.clone())),
+                        name: room.room_name,
+                        host_status,
+                        created_at: room.created_at,
+                        last_connected: room.last_connected,
+                    }
                 })
-                .collect();
+                .collect()
+                .await;
             Ok(json(&response))
         }
     }
@@ -105,7 +153,6 @@ pub async fn create_room(
         id: Uuid::new_v4(),
         room_name: create.name,
         user_id: req_user_id,
-        host_status: HostStatus::Stopped as i16,
         created_at: Utc::now(),
         last_connected: None,
     };
@@ -152,6 +199,7 @@ pub async fn delete_room(
 pub async fn list_rooms_for_user(
     for_user_id: Uuid,
     pool: PgPool,
+    host_conns: HostConnections,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let rooms_to_ret = db_txn(pool, true, |db| {
         let found_rooms = rooms.filter(user_id.eq(for_user_id)).load::<Room>(db)?;
@@ -165,17 +213,20 @@ pub async fn list_rooms_for_user(
     match rooms_to_ret {
         Err(e) => Err(reject::custom(e)),
         Ok((found_rooms, user_name)) => {
-            let response: Vec<RoomResponse> = found_rooms
-                .into_iter()
-                .map(|room| RoomResponse {
-                    id: room.id,
-                    host_name: Some(user_name.display_name.clone()),
-                    name: room.room_name,
-                    host_status: HostStatus::from(room.host_status),
-                    created_at: room.created_at,
-                    last_connected: room.last_connected,
+            let response: Vec<RoomResponse> = stream::iter(found_rooms)
+                .then(|room| async {
+                    let host_status = get_host_status(&host_conns, &room.id).await;
+                    RoomResponse {
+                        id: room.id,
+                        host_name: Some(user_name.display_name.clone()),
+                        name: room.room_name,
+                        host_status,
+                        created_at: room.created_at,
+                        last_connected: room.last_connected,
+                    }
                 })
-                .collect();
+                .collect()
+                .await;
             Ok(json(&response))
         }
     }
