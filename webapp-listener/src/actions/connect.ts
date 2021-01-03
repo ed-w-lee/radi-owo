@@ -83,12 +83,12 @@ export function initPeerConnection(wsParam: WebSocket) {
   return pc;
 }
 
-export default function startListenConnection(roomId: string): Promise<RTCPeerConnection> {
+export default function startListenConnection(roomId: string): Promise<[RTCPeerConnection, WebSocket]> {
   const ws = new WebSocket(`${settings.WS_SERVER}/rooms/${roomId}/listen`);
   return new Promise((res, rej) => {
     ws.onopen = () => {
       const pc = initPeerConnection(ws);
-      res(pc);
+      res([pc, ws]);
     };
     ws.onerror = () => {
       ws.close();

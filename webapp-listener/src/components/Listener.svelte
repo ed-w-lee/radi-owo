@@ -4,11 +4,24 @@
   import RoomList from "./RoomList.svelte";
 
   let pc: RTCPeerConnection | null = null;
+  let ws: WebSocket | null = null;
 
   const onRoomListen = async (roomId: string) => {
     console.log("calling onListen");
     try {
-      pc = await startListenConnection(roomId);
+      [pc, ws] = await startListenConnection(roomId);
+      pc.onconnectionstatechange = (ev) => {
+        if (["closed", "failed"].includes(pc.connectionState)) {
+          ws.close();
+          pc = null;
+          ws = null;
+        }
+      };
+      ws.onclose = () => {
+        pc.close();
+        pc = null;
+        ws = null;
+      };
     } catch (err) {
       console.error(err);
     }

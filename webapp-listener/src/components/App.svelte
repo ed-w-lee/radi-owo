@@ -1,36 +1,55 @@
 <script lang="ts">
 	import Listener from "./Listener.svelte";
+	import { Router, Route, navigate } from "svelte-routing";
+	import HeaderNav from "./HeaderNav.svelte";
+	import Home from "./Home.svelte";
+	import Redirect from "./Redirect.svelte";
+	import Signup from "./Signup.svelte";
+	import Login from "./Login.svelte";
+	import { userStore } from "../store";
+	import { onMount } from "svelte";
+
+	export let url = "";
+
+	onMount(() => {
+		userStore.useLocalStorage();
+	});
 </script>
 
 <style>
 	body {
 		background-color: white;
 	}
-
 	main {
 		text-align: center;
-		padding: 1em;
-		max-width: 240px;
-		margin: 0 auto;
-	}
-
-	h1 {
-		color: #ff3e00;
-		text-transform: uppercase;
-		font-size: 4em;
-		font-weight: 100;
-	}
-
-	@media (min-width: 640px) {
-		main {
-			max-width: none;
-		}
 	}
 </style>
 
-<body>
-	<main>
-		<h1>RadioWo</h1>
-		<Listener />
-	</main>
-</body>
+<Router {url}>
+	<body>
+		<HeaderNav />
+		<main>
+			<Route path="/login">
+				<Login
+					onSuccess={() => {
+						console.log('login success');
+						navigate('/home');
+					}} />
+			</Route>
+			<Route path="/signup">
+				<Signup
+					onSuccess={() => {
+						console.log('signup success');
+						navigate('/home');
+					}} />
+			</Route>
+			<Route path="/home">
+				<Home />
+			</Route>
+			<Route path="/*">
+				<!-- fallback -->
+				<Redirect to="/home" />
+			</Route>
+		</main>
+	</body>
+</Router>

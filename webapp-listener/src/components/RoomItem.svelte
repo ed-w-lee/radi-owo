@@ -7,5 +7,7 @@
 
 <div>
   {roomInfo.name}
-  <button on:click={() => onRoomListen(roomInfo.id)}>Listen</button>
+  <button
+    disabled={roomInfo.hostStatus !== 'playing'}
+    on:click={() => onRoomListen(roomInfo.id)}>Listen</button>
 </div>

@@ -78,6 +78,7 @@ const addConnection = async (manager: MediaStreamManager, port: Runtime.Port) =>
       pc.getReceivers().forEach((receiver) => {
         onRemoveTrack(receiver);
       });
+      pc.close();
       pc = null;
     }
   };
@@ -133,6 +134,7 @@ const createRoomManager = (
         senders.set(track.id, sender);
       });
       const cleanupListener = () => {
+        pc.close();
         handlers.delete(from);
         listenerConns.delete(from);
       };
