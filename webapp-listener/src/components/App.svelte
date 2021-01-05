@@ -2,7 +2,6 @@
 	import Listener from "./Listener.svelte";
 	import { Router, Route, navigate } from "svelte-routing";
 	import HeaderNav from "./HeaderNav.svelte";
-	import Home from "./Home.svelte";
 	import Redirect from "./Redirect.svelte";
 	import Signup from "./Signup.svelte";
 	import Login from "./Login.svelte";
@@ -20,8 +19,11 @@
 	body {
 		background-color: white;
 	}
+
 	main {
-		text-align: center;
+		width: 95%;
+		margin: auto;
+		background-color: lightskyblue;
 	}
 </style>
 
@@ -44,7 +46,7 @@
 					}} />
 			</Route>
 			<Route path="/home">
-				<Home />
+				<Listener />
 			</Route>
 			<Route path="/*">
 				<!-- fallback -->

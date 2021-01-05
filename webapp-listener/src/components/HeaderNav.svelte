@@ -8,6 +8,10 @@
 </script>
 
 <style>
+  nav {
+    height: 3em;
+  }
+
   #nav-left {
     float: left;
   }
@@ -19,7 +23,7 @@
 
 <nav>
   <div id="nav-left">
-    <Link to="/">Home</Link>
+    <Link to="/">RadioWo</Link>
   </div>
   <div id="nav-right">
     {#if userInfo === null}

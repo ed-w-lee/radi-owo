@@ -1,4 +1,5 @@
 import { Writable, writable } from 'svelte/store';
+import type { RoomInfo } from './actions/rooms';
 
 export type UserStore = {
   token: string,
@@ -39,3 +40,5 @@ const persistentStore = <T>(key: string, initial): PersistentStore<T> => {
 
 export const userStore: PersistentStore<UserStore | null> =
   persistentStore('user', null);
+
+export const listenRoomStore: Writable<RoomInfo | null> = writable(null);

@@ -1,9 +1,10 @@
+import { settings } from '../../lib/settings';
 import { login } from '../net';
 import { CLEAN_STATE, SetStateFn, State } from '../state';
 import { setStorageState } from '../storage';
 import { hideAllExcept } from './util';
 
-const submitHandler = async (submitType: 'login' | 'signup', setState: SetStateFn) => {
+const submitHandler = async (setState: SetStateFn) => {
   const form = document.getElementById('login-form') as HTMLFormElement;
   const { elements } = form;
   console.log(elements);
@@ -35,9 +36,12 @@ export const renderLoginPage = () => {
 };
 
 export const initLoginPage = (setState: SetStateFn) => {
+  // set signup link in JS so we can dynamically change it depending on environment
+  const signupLink = document.getElementById('signup-link') as HTMLLinkElement;
+  signupLink.href = `${settings.WEB_SERVER}/signup`;
   // add handlers
   const form = document.getElementById('login-form') as HTMLFormElement;
   const loginButton = document.querySelector('#login-form .login') as HTMLButtonElement;
-  loginButton.addEventListener('click', () => submitHandler('login', setState));
+  loginButton.addEventListener('click', () => submitHandler(setState));
   form.onsubmit = preventDefault;
 };
