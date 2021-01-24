@@ -22,6 +22,7 @@
     try {
       [pc, ws] = await startListenConnection(update.id);
       pc.onconnectionstatechange = (ev) => {
+        if (!pc) return;
         if (["closed", "failed"].includes(pc.connectionState)) {
           ws?.close();
           pc = null;
@@ -45,7 +46,7 @@
 <div class="listen-hero">
   <div class="room">
     <span class="listen-to">Listening to</span>
-    {#if pc !== null}
+    {#if roomInfo !== null}
       <div class="room-info">
         <span class="room-name">{roomInfo.name}</span>
         <span class="text-sep" />

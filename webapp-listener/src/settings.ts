@@ -1,6 +1,7 @@
 export type Settings = {
   API_SERVER: string,
   WS_SERVER: string,
+  FFT_SIZE: number,
 };
 
 let mySettings: Settings;
@@ -13,6 +14,7 @@ switch (__MYENV__) {
     mySettings = {
       API_SERVER: 'http://TODO',
       WS_SERVER: 'ws://TODO',
+      FFT_SIZE: 32,
     };
     break;
   }
@@ -20,6 +22,7 @@ switch (__MYENV__) {
     mySettings = {
       API_SERVER: 'http://localhost:3030',
       WS_SERVER: 'ws://localhost:3030',
+      FFT_SIZE: 32,
     };
     break;
   }
@@ -27,6 +30,7 @@ switch (__MYENV__) {
     mySettings = {
       API_SERVER: '/api',
       WS_SERVER: 'ws://192.168.1.128:58008/ws',
+      FFT_SIZE: 32,
     };
     break;
   }

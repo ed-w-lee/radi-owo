@@ -1,11 +1,23 @@
 <script lang="ts">
+  import { settings } from "../settings";
+
   import { listenRoomStore } from "../store";
 
+  import AudioVis from "./AudioVis.svelte";
   import Slider from "./Slider.svelte";
 
   export let connection: RTCPeerConnection;
   let volume: number = 1;
   let muted: boolean = false;
+
+  let audioCtx: AudioContext = new (window.AudioContext ||
+    // @ts-ignore: audio context polyfill
+    window.webkitAudioContext)();
+  console.log(audioCtx.sampleRate);
+  let audioSource: MediaStreamAudioSourceNode | null = null;
+  let analyserNode: AnalyserNode = new AnalyserNode(audioCtx, {
+    fftSize: settings.FFT_SIZE,
+  });
 
   const toggleMute = () => {
     muted = !muted;
@@ -24,9 +36,13 @@
         console.log("unmuted stream", stream);
         track.onunmute = () => {
           console.log("unmuted track, add stream");
-          if (!node.srcObject) {
+          if (node.srcObject != stream) {
             node.srcObject = stream;
           }
+          audioSource?.disconnect();
+
+          audioSource = audioCtx.createMediaStreamSource(stream);
+          audioSource.connect(analyserNode);
           // stupid hack for some weird Chrome issue when removing and adding tracks
           node.pause();
           node.play();
@@ -64,6 +80,8 @@
     <track kind="captions" />
   </audio>
 </div>
+
+<AudioVis {analyserNode} flipType="flip" />
 
 <style>
   .listen-controls {
