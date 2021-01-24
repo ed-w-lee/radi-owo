@@ -16,13 +16,6 @@
   };
 </script>
 
-<style>
-  form {
-    display: flex;
-    flex-direction: column;
-  }
-</style>
-
 <h1>Login</h1>
 <form on:submit|preventDefault={handleSubmit}>
   <label for="login-email">Email</label>
@@ -31,5 +24,12 @@
   <label for="login-password">Password</label>
   <input id="login-password" type="password" bind:value={password} />
 
-  <button type="submit" disabled={state !== 'presubmit'}>Submit</button>
+  <button type="submit" disabled={state !== "presubmit"}>Submit</button>
 </form>
+
+<style>
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+</style>

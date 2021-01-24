@@ -66,6 +66,13 @@
       : `top: calc(-.8em + ${(1 - relativeVal) * 100}%)`;
 </script>
 
+<div class="slider {orientation}" bind:this={rect}>
+  <div class="slider-rect" on:click|preventDefault={trackValue}>
+    <div class="slider-selected" style={selectedStyle} />
+    <div class="slider-grab" style={grabStyle} use:draggable />
+  </div>
+</div>
+
 <style>
   .slider {
     background: transparent;
@@ -115,10 +122,3 @@
     border-radius: 0.8em;
   }
 </style>
-
-<div class="slider {orientation}" bind:this={rect}>
-  <div class="slider-rect" on:click|preventDefault={trackValue}>
-    <div class="slider-selected" style={selectedStyle} />
-    <div class="slider-grab" style={grabStyle} use:draggable />
-  </div>
-</div>

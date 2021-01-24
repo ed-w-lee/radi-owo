@@ -37,7 +37,40 @@
       console.error(err);
     }
   });
+
+  let searchValue: string = "";
+  $: roomSearch = searchValue;
 </script>
+
+<div class="listen-hero">
+  <div class="room">
+    <span class="listen-to">Listening to</span>
+    {#if pc !== null}
+      <div class="room-info">
+        <span class="room-name">{roomInfo.name}</span>
+        <span class="text-sep" />
+        <span class="room-hostname">from {roomInfo.hostName}</span>
+      </div>
+      <!-- TODO: if we can get song info, put it here -->
+    {:else}
+      <div class="room-info">
+        <input
+          class="room-name"
+          placeholder="search..."
+          bind:value={searchValue}
+        />
+      </div>
+    {/if}
+  </div>
+
+  {#if pc !== null}
+    <div class="listen-controls">
+      <AudioPlayer connection={pc} />
+    </div>
+  {/if}
+</div>
+
+<RoomList search={roomSearch} />
 
 <style>
   .listen-hero {
@@ -74,29 +107,3 @@
     width: 100%;
   }
 </style>
-
-<div class="listen-hero">
-  <div class="room">
-    <span class="listen-to">Listening to</span>
-    {#if pc !== null}
-      <div class="room-info">
-        <span class="room-name">{roomInfo.name}</span>
-        <span class="text-sep" />
-        <span class="room-hostname">from {roomInfo.hostName}</span>
-      </div>
-      <!-- TODO: if we can get song info, put it here -->
-    {:else}
-      <div class="room-info">
-        <input class="room-name" placeholder="search..." />
-      </div>
-    {/if}
-  </div>
-
-  {#if pc !== null}
-    <div class="listen-controls">
-      <AudioPlayer connection={pc} />
-    </div>
-  {/if}
-</div>
-
-<RoomList />

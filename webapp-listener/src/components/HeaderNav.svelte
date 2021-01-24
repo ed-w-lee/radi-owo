@@ -7,6 +7,18 @@
   userStore.subscribe((val) => (userInfo = val));
 </script>
 
+<nav>
+  <div id="nav-left">
+    <Link to="/">RadioWo</Link>
+  </div>
+  <div id="nav-right">
+    {#if userInfo === null}
+      <Link to="/login">Login</Link>
+      <Link to="/signup">Signup</Link>
+    {:else}{userInfo.result.display_name}{/if}
+  </div>
+</nav>
+
 <style>
   nav {
     height: 3em;
@@ -20,15 +32,3 @@
     float: right;
   }
 </style>
-
-<nav>
-  <div id="nav-left">
-    <Link to="/">RadioWo</Link>
-  </div>
-  <div id="nav-right">
-    {#if userInfo === null}
-      <Link to="/login">Login</Link>
-      <Link to="/signup">Signup</Link>
-    {:else}{userInfo.result.display_name}{/if}
-  </div>
-</nav>

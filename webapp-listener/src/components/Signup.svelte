@@ -17,13 +17,6 @@
   };
 </script>
 
-<style>
-  form {
-    display: flex;
-    flex-direction: column;
-  }
-</style>
-
 <h1>Signup</h1>
 <form on:submit|preventDefault={handleSubmit}>
   <label for="signup-name">Display name</label>
@@ -31,7 +24,8 @@
     id="signup-name"
     type="text"
     bind:value={displayName}
-    placeholder="This will be the name other users see" />
+    placeholder="This will be the name other users see"
+  />
 
   <label for="signup-email">Email</label>
   <input id="signup-email" type="text" bind:value={email} placeholder="email" />
@@ -39,5 +33,12 @@
   <label for="signup-password">Password</label>
   <input id="signup-password" type="password" bind:value={password} />
 
-  <button type="submit" disabled={state !== 'presubmit'}>Submit</button>
+  <button type="submit" disabled={state !== "presubmit"}>Submit</button>
 </form>
+
+<style>
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+</style>

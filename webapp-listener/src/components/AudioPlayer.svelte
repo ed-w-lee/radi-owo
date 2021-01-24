@@ -52,18 +52,6 @@
   };
 </script>
 
-<style>
-  .listen-controls {
-    display: flex;
-    flex-direction: row;
-    width: 90%;
-    margin: 0 auto;
-  }
-  .listener-slider {
-    width: 100%;
-  }
-</style>
-
 <div class="listen-controls">
   <button on:click|preventDefault={onStop}>Stop</button>
   <button on:click|preventDefault={toggleMute}>
@@ -76,3 +64,15 @@
     <track kind="captions" />
   </audio>
 </div>
+
+<style>
+  .listen-controls {
+    display: flex;
+    flex-direction: row;
+    width: 90%;
+    margin: 0 auto;
+  }
+  .listener-slider {
+    width: 100%;
+  }
+</style>
