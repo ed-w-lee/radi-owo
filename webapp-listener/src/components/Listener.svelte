@@ -8,10 +8,12 @@
   let pc: RTCPeerConnection | null = null;
   let ws: WebSocket | null = null;
   let roomInfo: RoomInfo | null = null;
+  let searchValue: string = "";
 
   listenRoomStore.subscribe(async (update) => {
     console.log("listenRoom updating");
     roomInfo = update;
+    searchValue = "";
     if (update === null) {
       pc?.close();
       ws?.close();
@@ -30,16 +32,13 @@
         }
       };
       ws.onclose = () => {
-        pc?.close();
-        pc = null;
-        ws = null;
+        listenRoomStore.set(null);
       };
     } catch (err) {
       console.error(err);
     }
   });
 
-  let searchValue: string = "";
   $: roomSearch = searchValue;
 </script>
 
@@ -106,5 +105,8 @@
     border: 0 0 0 1px white solid;
     color: white;
     width: 100%;
+  }
+  input.room-name::placeholder {
+    color: rgba(255, 255, 255, 0.9);
   }
 </style>

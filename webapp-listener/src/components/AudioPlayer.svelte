@@ -14,7 +14,7 @@
     // @ts-ignore: audio context polyfill
     window.webkitAudioContext)();
   console.log(audioCtx.sampleRate);
-  let audioSource: MediaStreamAudioSourceNode | null = null;
+  let audioSource: MediaStreamTrackAudioSourceNode | null = null;
   let analyserNode: AnalyserNode = new AnalyserNode(audioCtx, {
     fftSize: settings.FFT_SIZE,
   });
@@ -40,8 +40,17 @@
             node.srcObject = stream;
           }
           audioSource?.disconnect();
+          audioSource = null;
 
-          audioSource = audioCtx.createMediaStreamSource(stream);
+          console.log("created new audio source");
+          if (audioCtx.createMediaStreamTrackSource) {
+            // use TrackSource since MediaStreamAudioSourceNode also only gets 1 track, but we can't control that one
+            audioSource = audioCtx.createMediaStreamTrackSource(track);
+          } else {
+            // polyfill for chrome b/c they don't support track source, doesn't always work :(
+            audioSource = audioCtx.createMediaStreamSource(stream);
+          }
+          console.log("connected to analyser node");
           audioSource.connect(analyserNode);
           // stupid hack for some weird Chrome issue when removing and adding tracks
           node.pause();

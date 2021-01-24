@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { beforeUpdate, onMount } from "svelte";
   import { settings } from "../settings";
+  import { getRandomInt } from "../actions/util";
 
   export let analyserNode: AnalyserNode | null;
   let flipType: "flip" | "rotate" | "jump" = "rotate";
@@ -19,6 +20,7 @@
 
   let flipped = true;
   let danceHidden = false;
+  let danceColor = "hsl(10, 80%, 80%)";
   onMount(() => {
     const ctx = canvas.getContext("2d");
     if (ctx === null) {
@@ -66,6 +68,7 @@
         if (lowpassSignalNorm > beatAve) {
           if (lowpassSignalNorm > beatAve * 1.005) {
             isBeat = true;
+            danceColor = `hsl(${getRandomInt(0, 360)}, 80%, 80%)`;
             // limit flipping
             if (t > lastFlip + 200) {
               if (flipType === "rotate" || flipType === "jump") {
@@ -83,6 +86,10 @@
         }
       }
     }
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
   });
 
   $: imgClass = (() => {
@@ -98,6 +105,12 @@
       }
     }
   })();
+
+  const flipTypeOptionMap = new Map([
+    ["rotate", "rotate 🔃️"],
+    ["flip", "flip ↔️"],
+    ["jump", "jump ↕️"],
+  ]);
 </script>
 
 <div class="vis-container" bind:clientWidth>
@@ -114,7 +127,8 @@
           on:click|preventDefault={() => {
             // @ts-ignore: flipTypeOption must be a valid flip type
             flipType = flipTypeOption;
-          }}>{flipTypeOption}
+          }}>
+          {flipTypeOptionMap.get(flipTypeOption)}
         </button>
       {/each}
     {/if}
@@ -126,11 +140,14 @@
       {#if danceHidden}
         🔥🔥 PADORU PADORU 🔥🔥
       {:else}
-        hide the padoru 😢
+        hide padoru 😢
       {/if}
     </button>
   </div>
-  <div class="img-container">
+  <div
+    class="img-container"
+    style="background-color: {danceColor}; transition: background-color 1s ease;"
+  >
     <img
       src="/nito.png"
       class="dance-img {imgClass} {danceHidden ? 'hide' : ''}"
@@ -203,11 +220,12 @@
 
   .dance-img.rotated {
     transform: rotate(360deg);
-    transition: transform 200ms;
+    transition: transform 200ms linear;
   }
 
   .dance-img.jumping {
     transform: translateY(-30px);
+    transition: transform 20ms;
   }
 
   .dance-img.notjumping {
