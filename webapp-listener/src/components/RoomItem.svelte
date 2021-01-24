@@ -3,6 +3,14 @@
   import { listenRoomStore } from "../store";
 
   export let roomInfo: RoomInfo;
+  let isCurrentRoom = false;
+  listenRoomStore.subscribe((selectedRoom) => {
+    if (selectedRoom && selectedRoom.id === roomInfo.id) {
+      isCurrentRoom = true;
+    } else {
+      isCurrentRoom = false;
+    }
+  });
 </script>
 
 <tr>
@@ -10,9 +18,14 @@
   <td class="host">{roomInfo.hostName}</td>
   <td class="action">
     <button
-      disabled={roomInfo.hostStatus !== "playing"}
-      on:click={() => listenRoomStore.set(roomInfo)}>Listen</button
-    >
+      disabled={roomInfo.hostStatus !== "playing" || isCurrentRoom}
+      on:click={() => listenRoomStore.set(roomInfo)}>
+      {#if isCurrentRoom}
+        Listening...
+      {:else}
+        Listen
+      {/if}
+    </button>
   </td>
 </tr>
 

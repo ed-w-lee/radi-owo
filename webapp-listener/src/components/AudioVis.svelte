@@ -107,7 +107,7 @@
 <div class="dance">
   <div class="dance-controls">
     {#if !danceHidden}
-      {#each ["flip", "rotate", "jump"] as flipTypeOption}
+      {#each ["rotate", "flip", "jump"] as flipTypeOption}
         <button
           class={`flip-${flipTypeOption}`}
           disabled={flipTypeOption === flipType}
@@ -124,9 +124,9 @@
         danceHidden = !danceHidden;
       }}>
       {#if danceHidden}
-        Expand
+        🔥🔥 PADORU PADORU 🔥🔥
       {:else}
-        Hide
+        hide the padoru 😢
       {/if}
     </button>
   </div>
@@ -161,6 +161,7 @@
   .dance-controls button {
     background: rgb(8, 110, 157);
     border: none;
+    border-radius: 0;
     color: white;
     margin: 0;
   }
@@ -183,6 +184,7 @@
 
   .dance-img {
     padding: 20px;
+    width: min(90%, 440px);
   }
 
   .hide {
