@@ -16,41 +16,35 @@
 </script>
 
 <Router {url}>
-  <body>
-    <HeaderNav />
-    <main>
-      <Route path="/login">
-        <Login
-          onSuccess={() => {
-            console.log("login success");
-            navigate("/home");
-          }}
-        />
-      </Route>
-      <Route path="/signup">
-        <Signup
-          onSuccess={() => {
-            console.log("signup success");
-            navigate("/home");
-          }}
-        />
-      </Route>
-      <Route path="/home">
-        <Listener />
-      </Route>
-      <Route path="/*">
-        <!-- fallback -->
-        <Redirect to="/home" />
-      </Route>
-    </main>
-  </body>
+  <HeaderNav />
+  <main>
+    <Route path="/login">
+      <Login
+        onSuccess={() => {
+          console.log("login success");
+          navigate("/home");
+        }}
+      />
+    </Route>
+    <Route path="/signup">
+      <Signup
+        onSuccess={() => {
+          console.log("signup success");
+          navigate("/home");
+        }}
+      />
+    </Route>
+    <Route path="/home">
+      <Listener />
+    </Route>
+    <Route path="/*">
+      <!-- fallback -->
+      <Redirect to="/home" />
+    </Route>
+  </main>
 </Router>
 
 <style>
-  body {
-    background-color: white;
-  }
-
   main {
     width: 95%;
     margin: auto;

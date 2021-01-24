@@ -81,7 +81,7 @@
   </audio>
 </div>
 
-<AudioVis {analyserNode} flipType="flip" />
+<AudioVis {analyserNode} />
 
 <style>
   .listen-controls {

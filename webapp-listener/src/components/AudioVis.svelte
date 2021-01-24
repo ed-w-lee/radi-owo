@@ -3,13 +3,12 @@
   import { settings } from "../settings";
 
   export let analyserNode: AnalyserNode | null;
-  export let flipType: "flip" | "rotate" | "jump" = "rotate";
+  let flipType: "flip" | "rotate" | "jump" = "rotate";
 
   const LOWPASS_CUTOFF_IDX = 6;
   const RUNNING_AVE = 0.97;
 
   let canvas: HTMLCanvasElement;
-  let beatCanvas: HTMLCanvasElement;
   let bufferLength = analyserNode
     ? analyserNode.frequencyBinCount
     : settings.FFT_SIZE / 2;
@@ -19,10 +18,10 @@
   let clientHeight = 100;
 
   let flipped = true;
+  let danceHidden = false;
   onMount(() => {
     const ctx = canvas.getContext("2d");
-    const beatCtx = beatCanvas.getContext("2d");
-    if (ctx === null || beatCtx === null) {
+    if (ctx === null) {
       console.error("failed to initialize canvas context");
       return;
     }
@@ -55,12 +54,11 @@
           ctx.fillRect(xLeft, canvasHeight - barHeight, barWidth, barHeight);
         }
       }
-      if (beatCtx && beatCanvas) {
+      if (!danceHidden) {
         const canFlip = t > lastFlip + 200;
         if (flipType === "rotate" || flipType === "jump") {
           if (canFlip) flipped = false;
         }
-        beatCanvas.width = clientWidth;
         const lowpass = new Uint8Array(dataArray.slice(0, LOWPASS_CUTOFF_IDX));
         const lowpassSignalNorm =
           lowpass.reduce((a, b) => a + b) / (255 * LOWPASS_CUTOFF_IDX);
@@ -83,27 +81,6 @@
           beatAve =
             RUNNING_AVE * beatAve + (1 - RUNNING_AVE) * lowpassSignalNorm;
         }
-
-        beatCtx.clearRect(0, 0, beatCtx.canvas.width, beatCtx.canvas.height);
-        if (isBeat) {
-          beatCtx.fillStyle = "red";
-          beatCtx.fillRect(0, 0, beatCtx.canvas.width, beatCtx.canvas.height);
-        }
-        let barWidth = 20;
-        let barHeight = lowpassSignalNorm * beatCtx.canvas.height;
-        beatCtx.fillStyle = "white";
-        beatCtx.fillRect(
-          0,
-          beatCtx.canvas.height - barHeight,
-          barWidth,
-          barHeight
-        );
-        beatCtx.fillRect(
-          barWidth + 1,
-          beatCtx.canvas.height - beatAve * beatCtx.canvas.height,
-          barWidth,
-          beatAve * beatCtx.canvas.height
-        );
       }
     }
   });
@@ -123,41 +100,115 @@
   })();
 </script>
 
-<div class="container" bind:clientWidth>
+<div class="vis-container" bind:clientWidth>
   <canvas bind:this={canvas} width={clientWidth / 2} height={clientHeight} />
 </div>
-<!-- <canvas bind:this={beatCanvas} width={clientWidth} /> -->
-<img
-  src="/nito.png"
-  class={imgClass}
-  alt="Nitocris tries to dance to the beat"
-/>
+
+<div class="dance">
+  <div class="dance-controls">
+    {#if !danceHidden}
+      {#each ["flip", "rotate", "jump"] as flipTypeOption}
+        <button
+          class={`flip-${flipTypeOption}`}
+          disabled={flipTypeOption === flipType}
+          on:click|preventDefault={() => {
+            // @ts-ignore: flipTypeOption must be a valid flip type
+            flipType = flipTypeOption;
+          }}>{flipTypeOption}
+        </button>
+      {/each}
+    {/if}
+    <button
+      class="dance-visible"
+      on:click|preventDefault={() => {
+        danceHidden = !danceHidden;
+      }}>
+      {#if danceHidden}
+        Expand
+      {:else}
+        Hide
+      {/if}
+    </button>
+  </div>
+  <div class="img-container">
+    <img
+      src="/nito.png"
+      class="dance-img {imgClass} {danceHidden ? 'hide' : ''}"
+      alt="Nitocris tries to dance to the beat"
+    />
+  </div>
+</div>
 
 <style>
   .container {
     width: 100%;
   }
 
-  img.normal {
+  .dance {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: white;
+    margin-right: 20px;
+    border: solid rgb(8, 110, 157);
+    border-width: 0 2px;
+  }
+
+  .dance-controls {
+    background: rgb(8, 110, 157);
+  }
+
+  .dance-controls button {
+    background: rgb(8, 110, 157);
+    border: none;
+    color: white;
+    margin: 0;
+  }
+
+  .dance-controls button:disabled {
+    background: rgb(4, 83, 119);
+  }
+
+  .dance-controls button:hover {
+    cursor: pointer;
+  }
+
+  .dance-visible {
+    float: right;
+  }
+
+  .img-container {
+    overflow: hidden;
+  }
+
+  .dance-img {
+    padding: 20px;
+  }
+
+  .hide {
+    display: none;
+  }
+
+  .dance-img.normal {
     transform: scaleX(1);
     transition: transform 200ms;
   }
 
-  img.flipped {
+  .dance-img.flipped {
     transform: scaleX(-1);
     transition: transform 200ms;
   }
 
-  img.rotated {
+  .dance-img.rotated {
     transform: rotate(360deg);
     transition: transform 200ms;
   }
 
-  img.jumping {
+  .dance-img.jumping {
     transform: translateY(-30px);
   }
 
-  img.notjumping {
+  .dance-img.notjumping {
     transform: none;
     transition: transform 100ms;
   }
