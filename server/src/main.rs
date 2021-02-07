@@ -11,7 +11,6 @@ mod routes;
 mod schema;
 mod settings;
 
-use settings::get_allowed_origins;
 use std::env;
 use warp::{hyper::Method, Filter};
 
@@ -23,9 +22,8 @@ async fn main() {
 
     let db_url = env::var("DATABASE_URL").expect("Unable to find DATABASE_URL");
     let pool = db::pg_pool(db_url);
-    debug!("allowed origins: {:?}", get_allowed_origins());
     let cors = warp::cors()
-        .allow_origins(get_allowed_origins())
+        .allow_any_origin() // sketchy but Firefox 85 only gives Origin: null for extension network requests
         .allow_headers(vec!["content-type"])
         .allow_methods(&[Method::POST, Method::DELETE, Method::GET]);
 

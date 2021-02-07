@@ -14,6 +14,8 @@ use crate::{
 pub fn routes(
     pool: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let turn = turn_get();
+
     let host_conns = HostConnections::default();
     let listen_conns = ListenConnections::default();
     let rooms = rooms_get(&pool, &host_conns)
@@ -32,15 +34,23 @@ pub fn routes(
     let my_routes =
         warp::path("my").and(my_rooms_get(&pool, &host_conns).or(my_sessions_post(&pool)));
 
-    let routes = room_routes.or(users).or(my_routes);
+    let routes = turn.or(room_routes).or(users).or(my_routes);
     routes
+}
+
+// POST /turn
+pub fn turn_get() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("turn")
+        .and(warp::post())
+        .and_then(get_turn_creds)
 }
 
 // POST /users with JSON body
 pub fn users_post(
     pool: &PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
+    warp::path("users")
+        .and(warp::post())
         .and(json_body::<UserCreateReq>())
         .and(with_db(pool.clone()))
         .and_then(create_user)

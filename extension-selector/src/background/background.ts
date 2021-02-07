@@ -94,26 +94,6 @@ const createRoomManager = (
     + `/host?token=${encodeURIComponent(authToken)}`;
   const ws = new WebSocket(uri);
 
-  // make sure host connection stays alive
-  const keepalive = () => {
-    if (!ws) {
-      console.error('[background] ws not alive anymore');
-      return;
-    }
-    if (ws.readyState === WebSocket.CLOSED) {
-      console.log('[background] ws closed, stopping keepalive');
-      return;
-    }
-    if (ws.readyState === WebSocket.OPEN) {
-      console.log('[background] sending keepalive');
-      ws.send(JSON.stringify({
-        type: 'KeepAlive',
-      }));
-    }
-    setTimeout(keepalive, settings.WS_KEEPALIVE_MS);
-  };
-  keepalive();
-
   const handlers = new Map();
   const listenerConns: Map<string, ListenerConnInfo> = new Map();
   const senders: Map<string, RTCRtpSender> = new Map();
@@ -156,6 +136,26 @@ const createRoomManager = (
       });
     }
   };
+
+  // make sure host connection stays alive
+  const keepalive = () => {
+    if (!ws) {
+      console.error('[background] ws not alive anymore');
+      return;
+    }
+    if (ws.readyState === WebSocket.CLOSED) {
+      console.log('[background] ws closed, stopping keepalive');
+      return;
+    }
+    if (ws.readyState === WebSocket.OPEN) {
+      console.log('[background] sending keepalive');
+      ws.send(JSON.stringify({
+        type: 'KeepAlive',
+      }));
+    }
+    setTimeout(keepalive, settings.WS_KEEPALIVE_MS);
+  };
+  keepalive();
 
   return {
     currentRoom,
@@ -225,5 +225,15 @@ const initialize = (managerParam: MediaStreamManager) => {
     mediaStream: new MediaStream(),
     roomManage: null,
   };
+
+  // just check out the manager state over time
+  if (settings.DEBUG) {
+    const mediaStreamManagerLog = () => {
+      console.debug(manager);
+      setTimeout(mediaStreamManagerLog, 100000);
+    };
+    mediaStreamManagerLog();
+  }
+
   initialize(manager);
 })();

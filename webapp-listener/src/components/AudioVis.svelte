@@ -20,7 +20,7 @@
 
   let flipped = true;
   let danceHidden = false;
-  let danceColor = "hsl(10, 80%, 80%)";
+  let danceColor = "hsl(10, 100%, 70%)";
   onMount(() => {
     const ctx = canvas.getContext("2d");
     if (ctx === null) {
@@ -68,7 +68,9 @@
         if (lowpassSignalNorm > beatAve) {
           if (lowpassSignalNorm > beatAve * 1.005) {
             isBeat = true;
-            danceColor = `hsl(${getRandomInt(0, 360)}, 80%, 80%)`;
+            danceColor = `hsl(${getRandomInt(0, 360)}, 100%, ${
+              60 + 30 * getRandomInt(-1, 2)
+            }%)`;
             // limit flipping
             if (t > lastFlip + 200) {
               if (flipType === "rotate" || flipType === "jump") {
@@ -107,7 +109,7 @@
   })();
 
   const flipTypeOptionMap = new Map([
-    ["rotate", "rotate 🔃️"],
+    ["rotate", "rotate 🔄️"],
     ["flip", "flip ↔️"],
     ["jump", "jump ↕️"],
   ]);
@@ -146,7 +148,7 @@
   </div>
   <div
     class="img-container"
-    style="background-color: {danceColor}; transition: background-color 1s ease;"
+    style="background-color: {danceColor}; transition: background-color 200ms ease-out;"
   >
     <img
       src="/nito.png"
@@ -219,8 +221,8 @@
   }
 
   .dance-img.rotated {
-    transform: rotate(360deg);
-    transition: transform 200ms linear;
+    transform: rotate(-360deg);
+    transition: transform 200ms ease-out;
   }
 
   .dance-img.jumping {
