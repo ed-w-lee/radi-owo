@@ -1,19 +1,62 @@
 import { settings } from '../settings';
 import 'webrtc-adapter';
 
-const config = {
-  iceServers: [],
+type TurnCreds = {
+  username: string,
+  credential: string,
+};
+
+type IceServer = {
+  urls: string,
+  username: string,
+  credential: string,
+};
+
+type Configuration = {
+  iceServers: IceServer[],
+};
+
+const getTurnCreds = async (): Promise<TurnCreds> => {
+  const response = await fetch(`${settings.API_SERVER}/turn`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error('failed to retrieve turn creds');
+  }
+  return response.json().then((turnCredsResponse) => {
+    const toRet = {
+      username: turnCredsResponse.username,
+      credential: turnCredsResponse.password,
+    };
+    return toRet;
+  });
+};
+
+const getConfig = async (): Promise<Configuration> => {
+  const config: Configuration = { iceServers: [] };
+  if (settings.ICE_SERVER) {
+    const creds = await getTurnCreds();
+    config.iceServers = [
+      {
+        urls: settings.ICE_SERVER,
+        username: creds.username,
+        credential: creds.credential,
+      },
+    ];
+  }
+  return config;
 };
 
 const wsSend = (ws: WebSocket, msg: any) => {
   ws.send(JSON.stringify(msg));
 }
 
-export function initPeerConnection(wsParam: WebSocket) {
+export async function initPeerConnection(wsParam: WebSocket) {
   console.log('initializing rtc peer connection');
   const ws = wsParam;
   const polite = false;
   // negotiate WebRTC connection
+  const config = await getConfig();
   const pc = new RTCPeerConnection(config);
   wsSend(ws, { msg: {} });
   let makingOffer = false;
@@ -87,8 +130,14 @@ export default function startListenConnection(roomId: string): Promise<[RTCPeerC
   const ws = new WebSocket(`${settings.WS_SERVER}/rooms/${roomId}/listen`);
   return new Promise((res, rej) => {
     ws.onopen = () => {
-      const pc = initPeerConnection(ws);
-      res([pc, ws]);
+      try {
+        initPeerConnection(ws).then((pc) => {
+          res([pc, ws]);
+        });
+      } catch (err) {
+        console.error(err);
+        rej(err);
+      }
     };
     ws.onerror = () => {
       ws.close();

@@ -124,7 +124,13 @@ declare global {
       name: `${streamId}-${generateId(10)}`,
     });
     console.log('[content] connected to port', port);
-    const pc = initLocalPeerConnection(port, false);
+    let pc: RTCPeerConnection;
+    try {
+      pc = await initLocalPeerConnection(port, false);
+    } catch (err) {
+      console.error(err);
+      return;
+    }
     console.log('[content] attempting to retrieve audio tracks');
     const senders: Map<string, RTCRtpSender> = new Map();
     stream.getAudioTracks().forEach((track) => {

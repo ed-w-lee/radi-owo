@@ -1,6 +1,7 @@
 export type Settings = {
   API_SERVER: string,
   WS_SERVER: string,
+  ICE_SERVER: string | null,
   FFT_SIZE: number,
 };
 
@@ -14,6 +15,7 @@ switch (__MYENV__) {
     mySettings = {
       API_SERVER: 'http://TODO',
       WS_SERVER: 'ws://TODO',
+      ICE_SERVER: 'turn:TODO',
       FFT_SIZE: 32,
     };
     break;
@@ -22,6 +24,7 @@ switch (__MYENV__) {
     mySettings = {
       API_SERVER: 'http://localhost:3030',
       WS_SERVER: 'ws://localhost:3030',
+      ICE_SERVER: null,
       FFT_SIZE: 32,
     };
     break;
@@ -30,6 +33,7 @@ switch (__MYENV__) {
     mySettings = {
       API_SERVER: '/api',
       WS_SERVER: 'ws://192.168.1.128:58008/ws',
+      ICE_SERVER: null,
       FFT_SIZE: 32,
     };
     break;

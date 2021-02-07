@@ -1,15 +1,61 @@
 import { Runtime } from 'webextension-polyfill-ts';
 import 'webrtc-adapter';
+import { settings } from './settings';
 
-const config = {
-  iceServers: [],
+type TurnCreds = {
+  username: string,
+  credential: string,
+};
+
+type IceServer = {
+  urls: string,
+  username: string,
+  credential: string,
+};
+
+type Configuration = {
+  iceServers: IceServer[],
+};
+
+const getTurnCreds = async (): Promise<TurnCreds> => {
+  const response = await fetch(`${settings.API_SERVER}/turn`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error('failed to retrieve turn creds');
+  }
+  return response.json().then((turnCredsResponse) => {
+    const toRet = {
+      username: turnCredsResponse.username,
+      credential: turnCredsResponse.password,
+    };
+    return toRet;
+  });
+};
+
+const getConfig = async (): Promise<Configuration> => {
+  const config: Configuration = { iceServers: [] };
+  if (settings.ICE_SERVER) {
+    const creds = await getTurnCreds();
+    config.iceServers = [
+      {
+        urls: settings.ICE_SERVER,
+        username: creds.username,
+        credential: creds.credential,
+      },
+    ];
+  }
+  return config;
 };
 
 const sanitize = (obj) => JSON.parse(JSON.stringify(obj));
 
-export function initLocalPeerConnection(portParam: Runtime.Port, polite: boolean) {
+export async function initLocalPeerConnection(portParam: Runtime.Port, polite: boolean) {
   console.log('initializing rtc peer connection');
   const port = portParam;
+  const config: Configuration = {
+    iceServers: [],
+  };
   // negotiate WebRTC connection
   const pc = new RTCPeerConnection(config);
   let makingOffer = false;
@@ -80,7 +126,7 @@ const wsSendToListener = (ws: WebSocket, clientId: string, msg) => {
 
 export type WSMessageHandler = ({ description, candidate }) => Promise<void>;
 
-export function initHostPeerConnection(
+export async function initHostPeerConnection(
   handlers: Map<string, WSMessageHandler>,
   wsParam: WebSocket,
   clientId: string,
@@ -88,6 +134,7 @@ export function initHostPeerConnection(
   console.log('[host] initializing rtc peer connection', clientId);
   const ws = wsParam;
 
+  const config = await getConfig();
   const pc = new RTCPeerConnection(config);
   const polite = true;
   let makingOffer = false;

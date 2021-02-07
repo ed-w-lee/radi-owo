@@ -40,7 +40,13 @@ const createAudioElement = (myMediaStream: MediaStream) => {
 };
 
 const addConnection = async (manager: MediaStreamManager, port: Runtime.Port) => {
-  let pc: RTCPeerConnection | null = initLocalPeerConnection(port, true);
+  let pc: RTCPeerConnection | null = null;
+  try {
+    pc = await initLocalPeerConnection(port, true);
+  } catch (err) {
+    console.error(err);
+    return;
+  }
 
   const onRemoveTrack = ({ track }: { track: MediaStreamTrack }) => {
     console.log('[background] stream removing track', track.id);
@@ -97,7 +103,7 @@ const createRoomManager = (
   const handlers = new Map();
   const listenerConns: Map<string, ListenerConnInfo> = new Map();
   const senders: Map<string, RTCRtpSender> = new Map();
-  ws.onmessage = ({ data }) => {
+  ws.onmessage = async ({ data }) => {
     console.debug('[host] received websocket message', data);
     const { from, msg } = JSON.parse(data);
     const handler = handlers.get(from);
@@ -108,7 +114,13 @@ const createRoomManager = (
     } else {
       // new listener, create a new connection to that listener
       console.log('[host] new listener', from);
-      const pc = initHostPeerConnection(handlers, ws, from);
+      let pc: RTCPeerConnection;
+      try {
+        pc = await initHostPeerConnection(handlers, ws, from);
+      } catch (err) {
+        console.error(err);
+        return;
+      }
       myStream.getAudioTracks().forEach((track) => {
         const sender = pc.addTrack(track, myStream);
         senders.set(track.id, sender);
