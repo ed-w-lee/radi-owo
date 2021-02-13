@@ -1,6 +1,7 @@
 <script lang="ts">
   import startListenConnection from "../actions/connect";
   import type { RoomInfo } from "../actions/rooms";
+  import { settings } from "../settings";
   import { listenRoomStore } from "../store";
   import AudioPlayer from "./AudioPlayer.svelte";
   import RoomList from "./RoomList.svelte";
@@ -14,6 +15,22 @@
     console.log("listenRoom updating");
     roomInfo = update;
     searchValue = "";
+
+    const keepalive = () => {
+      if (!ws) {
+        console.warn("ws not alive anymore");
+        return;
+      }
+      if (ws.readyState === WebSocket.CLOSED) {
+        console.debug("ws closed, stopping keepalive");
+        return;
+      }
+      if (ws.readyState === WebSocket.OPEN) {
+        console.debug("sending keepalive");
+        ws.send("");
+      }
+    };
+
     if (update === null) {
       pc?.close();
       ws?.close();
@@ -31,7 +48,9 @@
           ws = null;
         }
       };
+      const intervalHandle = setInterval(keepalive, settings.WS_KEEPALIVE_MS);
       ws.onclose = () => {
+        clearInterval(intervalHandle);
         listenRoomStore.set(null);
       };
     } catch (err) {
@@ -51,7 +70,6 @@
         <span class="text-sep" />
         <span class="room-hostname">from {roomInfo.hostName}</span>
       </div>
-      <!-- TODO: if we can get song info, put it here -->
     {:else}
       <div class="room-info">
         <input

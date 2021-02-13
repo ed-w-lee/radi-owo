@@ -24,7 +24,7 @@ pub async fn get_turn_creds() -> Result<impl warp::Reply, warp::Rejection> {
         }
     };
     // just use a random UUID as the username since we want non-logged-in users to be able to hit the TURN server
-    let username = format!("{}:{}", Uuid::new_v4(), expiration_ts.as_secs());
+    let username = format!("{}:{}", expiration_ts.as_secs(), Uuid::new_v4());
     let mut hmac = Hmac::new(Sha1::new(), TURN_SECRET.as_bytes());
     hmac.input(username.as_bytes());
 

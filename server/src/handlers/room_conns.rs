@@ -262,6 +262,9 @@ async fn handle_listen_message(
     };
 
     debug!("received listener message: {} from {}", msg_str, from_id);
+    if msg_str.to_string().is_empty() {
+        return Ok(());
+    }
 
     let to_send = ToHostMessage {
         from: from_id.clone(),

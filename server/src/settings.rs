@@ -5,5 +5,6 @@ pub const MAX_SALT_LEN: usize = 16;
 pub const OUTPUT_LEN: usize = 24;
 pub const BUF_SIZE: usize = 10000;
 pub const TURN_TIMEOUT: u64 = 1800;
+pub const DATABASE_URL: &'static str = env!("DATABASE_URL");
 pub const JWT_SECRET: &'static str = env!("JWT_SECRET");
 pub const TURN_SECRET: &'static str = env!("TURN_SECRET");

@@ -49,8 +49,7 @@ pub fn turn_get() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejec
 pub fn users_post(
     pool: &PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("users")
-        .and(warp::post())
+    warp::post()
         .and(json_body::<UserCreateReq>())
         .and(with_db(pool.clone()))
         .and_then(create_user)

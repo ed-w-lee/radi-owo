@@ -3,6 +3,7 @@ export type Settings = {
   WS_SERVER: string,
   ICE_SERVER: string | null,
   FFT_SIZE: number,
+  WS_KEEPALIVE_MS: number,
 };
 
 let mySettings: Settings;
@@ -13,10 +14,11 @@ declare const __MYENV__;
 switch (__MYENV__) {
   case 'production': {
     mySettings = {
-      API_SERVER: 'http://TODO',
-      WS_SERVER: 'ws://TODO',
-      ICE_SERVER: 'turn:TODO',
+      API_SERVER: '/api',
+      WS_SERVER: 'wss://radiowo.edwlee.dev/ws',
+      ICE_SERVER: 'turn:radiowo.edwlee.dev:3478',
       FFT_SIZE: 32,
+      WS_KEEPALIVE_MS: 10000,
     };
     break;
   }
@@ -26,6 +28,7 @@ switch (__MYENV__) {
       WS_SERVER: 'ws://localhost:3030',
       ICE_SERVER: null,
       FFT_SIZE: 32,
+      WS_KEEPALIVE_MS: 10000,
     };
     break;
   }
@@ -35,6 +38,7 @@ switch (__MYENV__) {
       WS_SERVER: 'ws://192.168.1.128:58008/ws',
       ICE_SERVER: null,
       FFT_SIZE: 32,
+      WS_KEEPALIVE_MS: 10000,
     };
     break;
   }

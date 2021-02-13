@@ -11,7 +11,7 @@ mod routes;
 mod schema;
 mod settings;
 
-use std::env;
+use settings::DATABASE_URL;
 use warp::{hyper::Method, Filter};
 
 use routes::routes;
@@ -20,8 +20,8 @@ use routes::routes;
 async fn main() {
     pretty_env_logger::init();
 
-    let db_url = env::var("DATABASE_URL").expect("Unable to find DATABASE_URL");
-    let pool = db::pg_pool(db_url);
+    info!("Creating connection pool");
+    let pool = db::pg_pool(DATABASE_URL.to_owned());
     let cors = warp::cors()
         .allow_any_origin() // sketchy but Firefox 85 only gives Origin: null for extension network requests
         .allow_headers(vec!["content-type"])
