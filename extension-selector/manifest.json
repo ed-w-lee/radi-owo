@@ -2,7 +2,7 @@
 	"manifest_version": 2,
 	"name": "Radiowo",
 	"version": "0.1",
-	"description": "Choose music sources for streaming to Radiowo",
+	"description": "Stream audio of your choosing through WebRTC. Listeners can go to https://radiowo.edwlee.dev to listen in.",
 	"icons": {
 		"48": "assets/icons/radiowo-48.png"
 	},
@@ -10,18 +10,16 @@
 		"activeTab",
 		"tabs",
 		"storage",
-		"*://localhost/*",
-		"*://radiowo.edwlee.dev/*",
-		"*://192.168.1.128/*"
+		"__ORIGIN_REPLACE_THIS__"
 	],
 	"browser_action": {
 		"default_icon": {
-			"48": "assets/icons/radiowo-48.png"
+			"48": "assets/icons/radiowo-48-lightblue.png"
 		},
 		"default_title": "Radiowo select",
-		"default_popup": "src/popup/popup.html"
+		"default_popup": "build/popup.html"
 	},
 	"background": {
-		"page": "src/background/background.html"
+		"page": "build/background.html"
 	}
 }

@@ -3,6 +3,7 @@ import replace from '@rollup/plugin-replace';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
+import copy from 'rollup-plugin-copy';
 
 const commonOutput = {
   format: 'iife',
@@ -30,7 +31,7 @@ export default [
   {
     input: 'src/content_scripts/stream_manager.ts',
     output: {
-      file: 'src/content_scripts/build_content.js',
+      file: 'publish/build/content.js',
       strict: false, // Firefox WebRTC adapter has problems
       ...commonOutput,
     },
@@ -39,17 +40,51 @@ export default [
   {
     input: 'src/background/background.ts',
     output: {
-      file: 'src/background/build_background.js',
+      file: 'publish/build/background.js',
       ...commonOutput,
     },
     ...commonExternal,
+    plugins: [
+      ...commonExternal.plugins,
+      copy({
+        targets: [
+          { src: 'src/background/background.html', dest: 'publish/build' },
+        ],
+      }),
+    ],
   },
   {
     input: 'src/popup/main.ts',
     output: {
-      file: 'src/popup/build_popup.js',
+      file: 'publish/build/popup.js',
       ...commonOutput,
     },
     ...commonExternal,
+    plugins: [
+      ...commonExternal.plugins,
+      copy({
+        targets: [
+          { src: ['src/popup/popup.html', 'src/popup/popup.css'], dest: 'publish/build' },
+          {
+            src: 'manifest.json',
+            dest: 'publish/',
+            rename: 'manifest.json',
+            transform: (contents) => contents.toString().replace('__ORIGIN_REPLACE_THIS__', () => {
+              switch (env) {
+                case 'localdev':
+                  return '*://localhost/*';
+                case 'remotedev':
+                  return '*://192.168.1.128/*';
+                case 'production':
+                  return '*://radiowo.edwlee.dev/*';
+                default:
+                  break;
+              }
+              return `__UNKNOWN_ENV__${env}__`;
+            }),
+          },
+        ],
+      }),
+    ],
   },
 ];

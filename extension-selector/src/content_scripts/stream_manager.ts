@@ -83,7 +83,7 @@ declare global {
       };
 
       window.addEventListener('click', listener, { capture: true });
-      window.addEventListener('blur', teardown);
+      window.addEventListener('blur', () => { teardown(); reject(); });
     });
   };
 
@@ -112,9 +112,18 @@ declare global {
 
   let isChoosing = false;
   const addStream = async (streamId: number) => {
-    if (isChoosing) return;
+    if (isChoosing) {
+      console.log('[content] still choosing');
+      return;
+    }
     isChoosing = true;
-    const element = await chooseStream();
+    let element: HTMLMediaElement;
+    try {
+      element = await chooseStream();
+    } catch (e) {
+      isChoosing = false;
+      return;
+    }
     isChoosing = false;
 
     const stream = captureStream(element);

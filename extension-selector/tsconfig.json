@@ -3,12 +3,12 @@
     "target": "ES2015",
     "moduleResolution": "node",
     "strictNullChecks": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": true
   },
   "include": [
-    "src/**/*.ts",
+    "src/**/*.ts"
   ],
   "exclude": [
-    "src/**/build_*.js",
+    "publish/*"
   ]
 }
