@@ -55,7 +55,7 @@ declare global {
   const chooseStream = (): Promise<HTMLMediaElement> => {
     console.log('[content] choosing stream');
     const styleElement = document.createElement('style');
-    styleElement.innerHTML = mediaElementCSS;
+    styleElement.appendChild(document.createTextNode(mediaElementCSS));
 
     document.head.appendChild(styleElement);
     console.log('[content] injected CSS');

@@ -11,17 +11,17 @@ export const renderRoomsList = async (state: State, setState: SetStateFn) => {
   hideAllExcept('room-selection');
 
   const contents = document.getElementById('room-selection-contents')!;
-  contents.innerHTML = '';
+  contents.textContent = '';
 
   state.allRooms.forEach((info) => {
     const row = document.createElement('tr');
 
     const nameEntry = document.createElement('td');
-    nameEntry.innerHTML = info.name;
+    nameEntry.textContent = info.name;
 
     const actionEntry = document.createElement('td');
     const useEntryButton = document.createElement('button');
-    useEntryButton.innerHTML = 'Host';
+    useEntryButton.textContent = 'Host';
     useEntryButton.onclick = () => {
       console.log('[popup] clicked to use room:', info.id);
       if (state.authToken) {
@@ -43,7 +43,7 @@ export const renderRoomsList = async (state: State, setState: SetStateFn) => {
     actionEntry.appendChild(useEntryButton);
 
     const deleteButton = document.createElement('button');
-    deleteButton.innerHTML = 'Delete';
+    deleteButton.textContent = 'Delete';
     deleteButton.onclick = async () => {
       console.log('[popup] clicked to delete room:', info.id);
       if (state.authToken) {
@@ -78,7 +78,7 @@ export const renderRoomsList = async (state: State, setState: SetStateFn) => {
 
   const actionEntry = document.createElement('td');
   const createButton = document.createElement('button');
-  createButton.innerHTML = 'Create';
+  createButton.textContent = 'Create';
   createButton.onclick = async () => {
     console.log('[popup] clicked to create room:', nameInput.value);
     if (state.authToken) {

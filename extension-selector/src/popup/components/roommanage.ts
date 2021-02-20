@@ -44,7 +44,7 @@ const handleClearStreams = () => {
 const renderStreamList = async (allStreams: StreamsStore) => {
   // render current streams
   const container = document.getElementById('elements-list-container')!;
-  container.innerHTML = 'loading...'; // clear children of the list
+  container.textContent = 'loading...'; // clear children of the list
 
   let numRendered = 0;
 
@@ -81,7 +81,7 @@ const renderStreamList = async (allStreams: StreamsStore) => {
       elementsList.appendChild(entry);
     });
   });
-  container.innerHTML = '';
+  container.textContent = '';
   container.appendChild(elementsList);
 
   if (numRendered === 0) {

@@ -31,3 +31,6 @@ npm run prod # live-update builds with prod settings
 (See `package.json` for any other commands you might want to try.)
 
 Then use `publish/manifest.json` as required extension manifest.
+
+### Publishing extension(?)
+Run `make package` to create `radiowo.zip`.
