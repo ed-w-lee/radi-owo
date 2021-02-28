@@ -1,5 +1,6 @@
-import { settings } from "../settings";
-import type { UserStore } from "../store";
+import { settings } from "@src/settings";
+import type { UserStore } from "@src/store";
+
 import { handleError } from "./util";
 
 export const signup = async (displayName: string, email: string, password: string): Promise<UserStore> => {

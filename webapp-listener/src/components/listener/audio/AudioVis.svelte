@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { beforeUpdate, onMount } from "svelte";
-  import { settings } from "../settings";
-  import { getRandomInt } from "../actions/util";
+  import { onMount } from "svelte";
+
+  import { settings } from "@src/settings";
+  import { getRandomInt } from "@src/actions/util";
 
   export let analyserNode: AnalyserNode | null;
   let flipType: "flip" | "rotate" | "jump" = "rotate";
@@ -129,7 +130,8 @@
           on:click|preventDefault={() => {
             // @ts-ignore: flipTypeOption must be a valid flip type
             flipType = flipTypeOption;
-          }}>
+          }}
+        >
           {flipTypeOptionMap.get(flipTypeOption)}
         </button>
       {/each}
@@ -138,7 +140,8 @@
       class="dance-visible"
       on:click|preventDefault={() => {
         danceHidden = !danceHidden;
-      }}>
+      }}
+    >
       {#if danceHidden}
         🔥🔥 PADORU PADORU 🔥🔥
       {:else}

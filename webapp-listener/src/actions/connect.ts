@@ -1,5 +1,6 @@
-import { settings } from '../settings';
 import 'webrtc-adapter';
+
+import { settings } from '@src/settings';
 
 type TurnCreds = {
   username: string,

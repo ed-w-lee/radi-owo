@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getRooms } from "../actions/rooms";
-  import type { RoomInfo } from "../actions/rooms";
+
+  import { getRooms } from "@src/actions/rooms";
+  import type { RoomInfo } from "@src/actions/rooms";
+
   import RoomItem from "./RoomItem.svelte";
 
   export let search: string = "";

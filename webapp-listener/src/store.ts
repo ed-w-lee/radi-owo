@@ -1,5 +1,6 @@
 import { Writable, writable } from 'svelte/store';
-import type { RoomInfo } from './actions/rooms';
+
+import type { RoomInfo } from '@src/actions/rooms';
 
 export type UserStore = {
   token: string,

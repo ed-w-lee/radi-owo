@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { settings } from "../settings";
+  import { settings } from "@src/settings";
+  import { listenRoomStore } from "@src/store";
 
-  import { listenRoomStore } from "../store";
+  import Slider from "@src/components/Slider.svelte";
 
   import AudioVis from "./AudioVis.svelte";
-  import Slider from "./Slider.svelte";
 
   export let connection: RTCPeerConnection;
   let volume: number = 1;

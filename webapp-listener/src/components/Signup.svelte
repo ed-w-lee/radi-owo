@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { signup } from "../actions/auth";
-  import { userStore } from "../store";
+  import { signup } from "@src/actions/auth";
+  import { userStore } from "@src/store";
 
   export let onSuccess: () => void;
 

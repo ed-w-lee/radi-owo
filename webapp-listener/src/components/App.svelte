@@ -1,12 +1,15 @@
 <script lang="ts">
-  import Listener from "./Listener.svelte";
   import { Router, Route, navigate } from "svelte-routing";
-  import HeaderNav from "./HeaderNav.svelte";
+  import { onMount } from "svelte";
+
+  import { userStore } from "@src/store";
+
+  import Listener from "./listener/Listener.svelte";
+  import HeaderNav from "./header/HeaderNav.svelte";
   import Redirect from "./Redirect.svelte";
   import Signup from "./Signup.svelte";
   import Login from "./Login.svelte";
-  import { userStore } from "../store";
-  import { onMount } from "svelte";
+  import About from "./About.svelte";
 
   export let url = "";
 
@@ -37,6 +40,9 @@
     <Route path="/home">
       <Listener />
     </Route>
+    <Route path="/about">
+      <About />
+    </Route>
     <Route path="/*">
       <!-- fallback -->
       <Redirect to="/home" />
@@ -48,6 +54,6 @@
   main {
     width: 95%;
     margin: auto;
-    background-color: lightskyblue;
+    background-color: rgb(184, 228, 255);
   }
 </style>

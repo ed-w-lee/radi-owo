@@ -1,8 +1,5 @@
-import App from './components/App.svelte';
+import App from '@src/components/App.svelte';
 
-const app = new App({
+new App({
   target: document.getElementById("app")!,
-  hydrate: true,
 });
-
-export default app;

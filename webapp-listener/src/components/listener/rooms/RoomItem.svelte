@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { RoomInfo } from "../actions/rooms";
-  import { listenRoomStore } from "../store";
+  import type { RoomInfo } from "@src/actions/rooms";
+  import { listenRoomStore } from "@src/store";
 
   export let roomInfo: RoomInfo;
   let isCurrentRoom = false;
@@ -19,7 +19,8 @@
   <td class="action">
     <button
       disabled={roomInfo.hostStatus !== "playing" || isCurrentRoom}
-      on:click={() => listenRoomStore.set(roomInfo)}>
+      on:click={() => listenRoomStore.set(roomInfo)}
+    >
       {#if isCurrentRoom}
         Listening...
       {:else}

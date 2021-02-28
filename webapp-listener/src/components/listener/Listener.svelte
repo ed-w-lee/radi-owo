@@ -1,10 +1,11 @@
 <script lang="ts">
-  import startListenConnection from "../actions/connect";
-  import type { RoomInfo } from "../actions/rooms";
-  import { settings } from "../settings";
-  import { listenRoomStore } from "../store";
-  import AudioPlayer from "./AudioPlayer.svelte";
-  import RoomList from "./RoomList.svelte";
+  import startListenConnection from "@src/actions/connect";
+  import type { RoomInfo } from "@src/actions/rooms";
+  import { settings } from "@src/settings";
+  import { listenRoomStore } from "@src/store";
+
+  import AudioPlayer from "./audio/AudioPlayer.svelte";
+  import RoomList from "./rooms/RoomList.svelte";
 
   let pc: RTCPeerConnection | null = null;
   let ws: WebSocket | null = null;
