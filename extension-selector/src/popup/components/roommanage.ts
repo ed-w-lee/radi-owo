@@ -115,7 +115,7 @@ export default async (state: State, setState: SetStateFn) => {
 
   console.log('[popup] running content script');
   browser.tabs.executeScript({
-    file: 'content.js',
+    file: '/build/content.js',
   })
     .catch((e) => console.log('[popup] there was some error in executing', e));
 

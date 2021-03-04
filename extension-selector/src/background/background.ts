@@ -35,6 +35,10 @@ const createAudioElement = (myMediaStream: MediaStream) => {
   audioElement.id = 'rolled-audio-track';
   audioElement.autoplay = true;
   audioElement.srcObject = myMediaStream;
+  if (!navigator.userAgent.includes('Firefox')) {
+    // non-Firefox browsers would likely have duplicate audio, so mute background
+    audioElement.muted = true;
+  }
   document.body.appendChild(audioElement);
   audioElement.play();
 };

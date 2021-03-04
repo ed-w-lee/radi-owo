@@ -27,6 +27,7 @@ declare global {
 }
 
 (() => {
+  console.log("attempting to run content script...");
   if (window.RadiowoHasRun) {
     return;
   }
