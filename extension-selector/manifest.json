@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "Radiowo",
-	"version": "0.1",
+	"version": "0.1.1",
 	"description": "Stream audio of your choosing through WebRTC. Listeners can go to https://radiowo.edwlee.dev to listen in.",
 	"icons": {
 		"48": "assets/icons/radiowo-48.png"
